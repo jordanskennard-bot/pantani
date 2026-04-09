@@ -2,10 +2,9 @@ import * as cheerio from 'cheerio'
 
 // Extract plain text from a PDF buffer
 export async function extractPdf(buffer: Buffer): Promise<string> {
-  const { PDFParse } = await import('pdf-parse')
-  const parser = new PDFParse({ data: buffer })
-  const result = await parser.getText()
-  return result.text
+  const { extractText } = await import('unpdf')
+  const { text } = await extractText(new Uint8Array(buffer))
+  return Array.isArray(text) ? text.join('\n') : text
 }
 
 // Extract plain text from a .docx buffer

@@ -75,7 +75,7 @@ export default function Home() {
       const data = await res.json()
       if (res.ok) {
         setUrlStatus('ok')
-        setUrlMessage(`Ingested "${data.title}" — ${data.chunkCount} chunks`)
+        setUrlMessage(`Ingested "${data.title}" (${data.chunkCount} chunks)`)
         setUrl('')
         fetchDocs()
       } else {
@@ -98,7 +98,7 @@ export default function Home() {
       const data = await res.json()
       if (res.ok) {
         setFileStatus('ok')
-        setFileMessage(`Ingested "${file.name}" — ${data.chunkCount} chunks`)
+        setFileMessage(`Ingested "${file.name}" (${data.chunkCount} chunks)`)
         fetchDocs()
       } else {
         setFileStatus('error')
@@ -137,7 +137,7 @@ export default function Home() {
         {/* Header */}
         <div className="mb-14">
           <h1 className="text-4xl font-medium tracking-tight" style={{ color: '#1a1a18', fontFamily: 'var(--font-serif)' }}>Pantani</h1>
-          <p className="text-sm mt-2" style={{ color: '#6b6b63' }}>Libro di corsa — knowledge intake</p>
+          <p className="text-sm mt-2" style={{ color: '#6b6b63' }}>Libro di corsa (race book): knowledge intake</p>
         </div>
 
         {/* URL intake */}
