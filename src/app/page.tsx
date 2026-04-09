@@ -15,15 +15,15 @@ type Document = {
 }
 
 const TAG_COLOURS: Record<string, string> = {
-  competitive_intel:  'bg-rose-900/50 text-rose-300',
-  programmatic:       'bg-blue-900/50 text-blue-300',
-  cpm_benchmarks:     'bg-amber-900/50 text-amber-300',
-  attribution:        'bg-purple-900/50 text-purple-300',
-  audience:           'bg-teal-900/50 text-teal-300',
-  merchant_profile:   'bg-green-900/50 text-green-300',
-  category_knowledge: 'bg-orange-900/50 text-orange-300',
-  platform_intel:     'bg-sky-900/50 text-sky-300',
-  regulation:         'bg-zinc-700/50 text-zinc-400',
+  competitive_intel:  'bg-rose-100 text-rose-700',
+  programmatic:       'bg-blue-100 text-blue-700',
+  cpm_benchmarks:     'bg-amber-100 text-amber-700',
+  attribution:        'bg-purple-100 text-purple-700',
+  audience:           'bg-teal-100 text-teal-700',
+  merchant_profile:   'bg-green-100 text-green-700',
+  category_knowledge: 'bg-orange-100 text-orange-700',
+  platform_intel:     'bg-sky-100 text-sky-700',
+  regulation:         'bg-stone-100 text-stone-600',
 }
 
 const SOURCE_ICONS: Record<string, string> = {
@@ -131,54 +131,56 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100 font-mono">
-      <div className="max-w-3xl mx-auto px-6 py-12">
+    <main className="min-h-screen" style={{ background: '#f5f4f0', color: '#1a1a18' }}>
+      <div className="max-w-2xl mx-auto px-6 py-16">
 
         {/* Header */}
-        <div className="mb-12">
-          <h1 className="text-2xl font-bold tracking-tight text-white">Pantani</h1>
-          <p className="text-zinc-500 text-sm mt-1">Libro di corsa — knowledge intake</p>
+        <div className="mb-14">
+          <h1 className="text-4xl font-medium tracking-tight" style={{ color: '#1a1a18', fontFamily: 'var(--font-serif)' }}>Pantani</h1>
+          <p className="text-sm mt-2" style={{ color: '#6b6b63' }}>Libro di corsa — knowledge intake</p>
         </div>
 
         {/* URL intake */}
         <section className="mb-8">
-          <h2 className="text-xs uppercase tracking-widest text-zinc-500 mb-3">Link</h2>
+          <h2 className="text-xs uppercase tracking-widest mb-3" style={{ color: '#9a9a8e', letterSpacing: '0.12em' }}>Link</h2>
           <form onSubmit={submitUrl} className="flex gap-2">
             <input
               type="url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://..."
-              className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-zinc-600"
+              className="flex-1 rounded px-3 py-2 text-sm focus:outline-none"
+              style={{ background: '#eceae4', border: '1px solid #d8d6ce', color: '#1a1a18' }}
             />
             <button
               type="submit"
               disabled={urlStatus === 'loading'}
-              className="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-zinc-100 text-sm px-4 py-2 rounded transition-colors"
+              className="text-sm px-4 py-2 rounded transition-colors disabled:opacity-40"
+              style={{ background: '#1a1a18', color: '#f5f4f0' }}
             >
               {urlStatus === 'loading' ? '...' : 'Ingest'}
             </button>
           </form>
           {urlMessage && (
-            <p className={`text-xs mt-2 ${urlStatus === 'ok' ? 'text-emerald-400' : 'text-red-400'}`}>
+            <p className={`text-xs mt-2 ${urlStatus === 'ok' ? 'text-emerald-700' : 'text-red-600'}`}>
               {urlMessage}
             </p>
           )}
         </section>
 
         {/* File drop */}
-        <section className="mb-12">
-          <h2 className="text-xs uppercase tracking-widest text-zinc-500 mb-3">File</h2>
+        <section className="mb-10">
+          <h2 className="text-xs uppercase tracking-widest mb-3" style={{ color: '#9a9a8e', letterSpacing: '0.12em' }}>File</h2>
           <label
             htmlFor="file-input"
             onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
             onDragLeave={() => setIsDragging(false)}
             onDrop={onDrop}
-            className={`block border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-              isDragging
-                ? 'border-zinc-400 bg-zinc-900'
-                : 'border-zinc-800 hover:border-zinc-700'
-            }`}
+            className="block rounded-lg p-8 text-center cursor-pointer transition-colors"
+            style={{
+              border: `2px dashed ${isDragging ? '#9a9a8e' : '#d8d6ce'}`,
+              background: isDragging ? '#eceae4' : 'transparent',
+            }}
           >
             <input
               id="file-input"
@@ -188,85 +190,86 @@ export default function Home() {
               className="sr-only"
             />
             {fileStatus === 'loading' ? (
-              <p className="text-zinc-500 text-sm">Processing...</p>
+              <p className="text-sm" style={{ color: '#9a9a8e' }}>Processing...</p>
             ) : (
               <>
-                <p className="text-zinc-400 text-sm">Drop a file here or click to browse</p>
-                <p className="text-zinc-600 text-xs mt-1">PDF · DOCX · TXT · MD</p>
+                <p className="text-sm" style={{ color: '#6b6b63' }}>Drop a file here or click to browse</p>
+                <p className="text-xs mt-1" style={{ color: '#9a9a8e' }}>PDF · DOCX · TXT · MD</p>
               </>
             )}
           </label>
           {fileMessage && (
-            <p className={`text-xs mt-2 ${fileStatus === 'ok' ? 'text-emerald-400' : 'text-red-400'}`}>
+            <p className={`text-xs mt-2 ${fileStatus === 'ok' ? 'text-emerald-700' : 'text-red-600'}`}>
               {fileMessage}
             </p>
           )}
         </section>
 
-        {/* Email forwarding instructions */}
-        <section className="mb-12 bg-zinc-900 border border-zinc-800 rounded-lg p-5">
-          <h2 className="text-xs uppercase tracking-widest text-zinc-500 mb-3">Email</h2>
-          <p className="text-zinc-400 text-sm">
+        {/* Email */}
+        <section className="mb-14 rounded-lg p-5" style={{ background: '#eceae4', border: '1px solid #d8d6ce' }}>
+          <h2 className="text-xs uppercase tracking-widest mb-3" style={{ color: '#9a9a8e', letterSpacing: '0.12em' }}>Email</h2>
+          <p className="text-sm" style={{ color: '#4a4a42' }}>
             Forward any email to your inbound address and it will be added to the knowledge store automatically.
           </p>
-          <div className="mt-3 bg-zinc-950 rounded px-3 py-2 text-sm text-zinc-300 font-mono">
+          <div className="mt-3 rounded px-3 py-2 text-sm font-mono" style={{ background: '#f5f4f0', color: '#4a4a42' }}>
             {process.env.NEXT_PUBLIC_INBOUND_EMAIL ?? 'pantani@your-domain.com'}
           </div>
-          <p className="text-zinc-600 text-xs mt-2">
+          <p className="text-xs mt-2" style={{ color: '#9a9a8e' }}>
             Configure your inbound email webhook to POST to <code>/api/ingest/email</code>
           </p>
         </section>
 
         {/* Document list */}
         <section>
-          <h2 className="text-xs uppercase tracking-widest text-zinc-500 mb-3">
+          <h2 className="text-xs uppercase tracking-widest mb-4" style={{ color: '#9a9a8e', letterSpacing: '0.12em' }}>
             Knowledge store
             {!docsLoading && (
-              <span className="ml-2 text-zinc-600 normal-case">
+              <span className="ml-2 normal-case" style={{ color: '#b8b8ae' }}>
                 {documents.length} document{documents.length !== 1 ? 's' : ''}
               </span>
             )}
           </h2>
 
           {docsLoading ? (
-            <p className="text-zinc-600 text-sm">Loading...</p>
+            <p className="text-sm" style={{ color: '#9a9a8e' }}>Loading...</p>
           ) : documents.length === 0 ? (
-            <p className="text-zinc-600 text-sm">No documents ingested yet.</p>
+            <p className="text-sm" style={{ color: '#9a9a8e' }}>No documents ingested yet.</p>
           ) : (
-            <ul className="space-y-2">
+            <ul className="space-y-3">
               {documents.map((doc) => (
                 <li
                   key={doc.id}
-                  className="bg-zinc-900 rounded px-4 py-3 text-sm"
+                  className="rounded-lg px-4 py-4 text-sm"
+                  style={{ background: '#eceae4', border: '1px solid #d8d6ce' }}
                 >
                   <div className="flex items-start gap-3">
-                    <span className="text-zinc-600 mt-0.5 w-4 shrink-0" title={SOURCE_LABELS[doc.source_type]}>
+                    <span className="mt-0.5 w-4 shrink-0 text-xs" style={{ color: '#9a9a8e' }} title={SOURCE_LABELS[doc.source_type]}>
                       {SOURCE_ICONS[doc.source_type]}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-zinc-200 truncate">
+                      <p className="truncate font-medium" style={{ color: '#1a1a18' }}>
                         {doc.title ?? doc.source_ref ?? '(untitled)'}
                       </p>
                       {doc.source_type === 'email' && doc.source_from && (
-                        <p className="text-zinc-600 text-xs truncate">{doc.source_from}</p>
+                        <p className="text-xs truncate mt-0.5" style={{ color: '#9a9a8e' }}>{doc.source_from}</p>
                       )}
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-zinc-600 text-xs">{formatDate(doc.created_at)}</p>
+                      <p className="text-xs" style={{ color: '#9a9a8e' }}>{formatDate(doc.created_at)}</p>
                       {doc.token_count && (
-                        <p className="text-zinc-700 text-xs">~{doc.token_count.toLocaleString()} tok</p>
+                        <p className="text-xs mt-0.5" style={{ color: '#b8b8ae' }}>~{doc.token_count.toLocaleString()} tok</p>
                       )}
                     </div>
                   </div>
                   {doc.summary && (
-                    <p className="text-zinc-500 text-xs mt-2 ml-7 leading-relaxed">{doc.summary}</p>
+                    <p className="text-xs mt-3 ml-7 leading-relaxed" style={{ color: '#6b6b63' }}>{doc.summary}</p>
                   )}
                   {doc.tags?.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2 ml-7">
                       {doc.tags.map((tag) => (
                         <span
                           key={tag}
-                          className={`text-xs px-2 py-0.5 rounded-full ${TAG_COLOURS[tag] ?? 'bg-zinc-800 text-zinc-400'}`}
+                          className={`text-xs px-2 py-0.5 rounded-full ${TAG_COLOURS[tag] ?? 'bg-stone-100 text-stone-600'}`}
                         >
                           {tag.replace(/_/g, ' ')}
                         </span>
