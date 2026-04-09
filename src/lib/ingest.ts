@@ -1,3 +1,4 @@
+import { createHash } from 'crypto'
 import { supabase } from './supabase'
 import { embedTexts } from './embeddings'
 import { chunkText } from './chunk'
@@ -17,6 +18,7 @@ type IngestResult = {
   chunkCount: number
   tags: string[]
   summary: string
+  duplicate?: boolean
 }
 
 // Ingest a piece of text into the libro di corsa:
@@ -28,6 +30,24 @@ type IngestResult = {
 // 6. Store chunks + embeddings
 export async function ingest(input: IngestInput): Promise<IngestResult> {
   const { sourceType, sourceRef, sourceFrom, title, text, metadata = {} } = input
+
+  // 0. Duplicate check — hash the text and bail early if we've seen it before
+  const contentHash = createHash('md5').update(text).digest('hex')
+  const { data: existing } = await supabase
+    .from('documents')
+    .select('id, tags, summary')
+    .eq('content_hash', contentHash)
+    .maybeSingle()
+
+  if (existing) {
+    return {
+      documentId: existing.id,
+      chunkCount: 0,
+      tags: existing.tags ?? [],
+      summary: existing.summary ?? '',
+      duplicate: true,
+    }
+  }
 
   // 1. Classify — runs in parallel with nothing else yet, cheap Haiku call
   const comprehension = await classifyDocument(text)
@@ -45,6 +65,7 @@ export async function ingest(input: IngestInput): Promise<IngestResult> {
       metadata,
       summary: comprehension.summary,
       tags: comprehension.tags,
+      content_hash: contentHash,
     })
     .select('id')
     .single()

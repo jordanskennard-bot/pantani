@@ -5,7 +5,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 type QueueItem = {
   id: string
   file: File
-  status: 'queued' | 'processing' | 'done' | 'error'
+  status: 'queued' | 'processing' | 'done' | 'duplicate' | 'error'
   message?: string
 }
 
@@ -107,7 +107,11 @@ export default function Home() {
       try {
         const res = await fetch('/api/ingest/file', { method: 'POST', body: form })
         const data = await res.json()
-        if (res.ok) {
+        if (res.ok && data.duplicate) {
+          setQueue(q => q.map(i => i.id === item.id
+            ? { ...i, status: 'duplicate' }
+            : i))
+        } else if (res.ok) {
           setQueue(q => q.map(i => i.id === item.id
             ? { ...i, status: 'done', message: `${data.chunkCount} chunks` }
             : i))
@@ -238,6 +242,9 @@ export default function Home() {
                   )}
                   {item.status === 'processing' && (
                     <span style={{ color: '#6b6b63' }}>Elaborazione...</span>
+                  )}
+                  {item.status === 'duplicate' && (
+                    <span style={{ color: '#9a9a8e' }}>Gia presente</span>
                   )}
                   {item.status === 'done' && (
                     <span className="text-emerald-700">{item.message}</span>
