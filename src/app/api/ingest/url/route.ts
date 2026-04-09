@@ -45,7 +45,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, title, ...result })
   } catch (err) {
-    console.error('Ingest error:', err)
-    return NextResponse.json({ error: 'Ingest failed' }, { status: 500 })
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('Ingest error:', message)
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
