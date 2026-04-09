@@ -9,13 +9,22 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.82.0",
+    "@supabase/supabase-js": "^2.102.0",
+    "cheerio": "^1.2.0",
+    "googleapis": "^171.4.0",
+    "mammoth": "^1.12.0",
     "next": "16.2.2",
+    "pdf-parse": "^2.4.5",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "resend": "^6.10.0",
+    "voyageai": "^0.2.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pdf-parse": "^1.1.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
