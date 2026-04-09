@@ -15,7 +15,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "Pantani",
-  description: "Libro di corsa (race book): knowledge intake",
+  description: "Libro di corsa",
 };
 
 export default function RootLayout({

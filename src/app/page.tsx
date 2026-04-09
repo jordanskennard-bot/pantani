@@ -137,7 +137,7 @@ export default function Home() {
         {/* Header */}
         <div className="mb-14">
           <h1 className="text-4xl font-medium tracking-tight" style={{ color: '#1a1a18', fontFamily: 'var(--font-serif)' }}>Pantani</h1>
-          <p className="text-sm mt-2" style={{ color: '#6b6b63' }}>Libro di corsa (race book): knowledge intake</p>
+          <p className="text-sm mt-2" style={{ color: '#6b6b63' }}>Libro di corsa</p>
         </div>
 
         {/* URL intake */}
