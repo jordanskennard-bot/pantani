@@ -1,6 +1,13 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
+
+type QueueItem = {
+  id: string
+  file: File
+  status: 'queued' | 'processing' | 'done' | 'error'
+  message?: string
+}
 
 type Document = {
   id: string
@@ -43,9 +50,9 @@ export default function Home() {
   const [urlStatus, setUrlStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
   const [urlMessage, setUrlMessage] = useState('')
 
-  const [fileStatus, setFileStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
-  const [fileMessage, setFileMessage] = useState('')
+  const [queue, setQueue] = useState<QueueItem[]>([])
   const [isDragging, setIsDragging] = useState(false)
+  const processingRef = useRef(false)
 
   const [documents, setDocuments] = useState<Document[]>([])
   const [docsLoading, setDocsLoading] = useState(true)
@@ -88,38 +95,65 @@ export default function Home() {
     }
   }
 
-  async function uploadFile(file: File) {
-    setFileStatus('loading')
-    setFileMessage('')
-    const form = new FormData()
-    form.append('file', file)
-    try {
-      const res = await fetch('/api/ingest/file', { method: 'POST', body: form })
-      const data = await res.json()
-      if (res.ok) {
-        setFileStatus('ok')
-        setFileMessage(`Ingested "${file.name}" (${data.chunkCount} chunks)`)
-        fetchDocs()
-      } else {
-        setFileStatus('error')
-        setFileMessage(data.error ?? 'Unknown error')
+  const processQueue = useCallback(async (items: QueueItem[]) => {
+    if (processingRef.current) return
+    processingRef.current = true
+
+    for (const item of items) {
+      setQueue(q => q.map(i => i.id === item.id ? { ...i, status: 'processing' } : i))
+
+      const form = new FormData()
+      form.append('file', item.file)
+      try {
+        const res = await fetch('/api/ingest/file', { method: 'POST', body: form })
+        const data = await res.json()
+        if (res.ok) {
+          setQueue(q => q.map(i => i.id === item.id
+            ? { ...i, status: 'done', message: `${data.chunkCount} chunks` }
+            : i))
+          fetchDocs()
+        } else {
+          setQueue(q => q.map(i => i.id === item.id
+            ? { ...i, status: 'error', message: data.error ?? 'Unknown error' }
+            : i))
+        }
+      } catch {
+        setQueue(q => q.map(i => i.id === item.id
+          ? { ...i, status: 'error', message: 'Network error' }
+          : i))
       }
-    } catch {
-      setFileStatus('error')
-      setFileMessage('Network error')
     }
+
+    processingRef.current = false
+  }, [fetchDocs])
+
+  function enqueueFiles(files: File[]) {
+    const newItems: QueueItem[] = files.map(file => ({
+      id: `${Date.now()}-${Math.random()}`,
+      file,
+      status: 'queued',
+    }))
+    setQueue(q => [...q, ...newItems])
   }
+
+  // Kick off processing whenever new queued items appear
+  useEffect(() => {
+    const pending = queue.filter(i => i.status === 'queued')
+    if (pending.length > 0 && !processingRef.current) {
+      processQueue(pending)
+    }
+  }, [queue, processQueue])
 
   function onDrop(e: React.DragEvent) {
     e.preventDefault()
     setIsDragging(false)
-    const file = e.dataTransfer.files[0]
-    if (file) uploadFile(file)
+    const files = Array.from(e.dataTransfer.files)
+    if (files.length) enqueueFiles(files)
   }
 
   function onFileInput(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (file) uploadFile(file)
+    const files = Array.from(e.target.files ?? [])
+    if (files.length) enqueueFiles(files)
     e.target.value = ''
   }
 
@@ -187,21 +221,33 @@ export default function Home() {
               type="file"
               accept=".pdf,.docx,.txt,.md,.markdown,.csv"
               onChange={onFileInput}
+              multiple
               className="sr-only"
             />
-            {fileStatus === 'loading' ? (
-              <p className="text-sm" style={{ color: '#9a9a8e' }}>Processing...</p>
-            ) : (
-              <>
-                <p className="text-sm" style={{ color: '#6b6b63' }}>Drop a file here or click to browse</p>
-                <p className="text-xs mt-1" style={{ color: '#9a9a8e' }}>PDF · DOCX · TXT · MD</p>
-              </>
-            )}
+            <p className="text-sm" style={{ color: '#6b6b63' }}>Drop files here or click to browse</p>
+            <p className="text-xs mt-1" style={{ color: '#9a9a8e' }}>PDF · DOCX · TXT · MD</p>
           </label>
-          {fileMessage && (
-            <p className={`text-xs mt-2 ${fileStatus === 'ok' ? 'text-emerald-700' : 'text-red-600'}`}>
-              {fileMessage}
-            </p>
+
+          {queue.length > 0 && (
+            <ul className="mt-3 space-y-1">
+              {queue.map((item) => (
+                <li key={item.id} className="flex items-center gap-2 text-xs rounded px-3 py-2" style={{ background: '#eceae4', border: '1px solid #d8d6ce' }}>
+                  <span className="flex-1 truncate" style={{ color: '#4a4a42' }}>{item.file.name}</span>
+                  {item.status === 'queued' && (
+                    <span style={{ color: '#9a9a8e' }}>In coda</span>
+                  )}
+                  {item.status === 'processing' && (
+                    <span style={{ color: '#6b6b63' }}>Elaborazione...</span>
+                  )}
+                  {item.status === 'done' && (
+                    <span className="text-emerald-700">{item.message}</span>
+                  )}
+                  {item.status === 'error' && (
+                    <span className="text-red-600">{item.message}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
           )}
         </section>
 
