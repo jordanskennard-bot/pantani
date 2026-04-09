@@ -1,0 +1,52 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { resolveChannel, getChannelVideos, ingestVideo } from '@/lib/youtube'
+
+export const runtime = 'nodejs'
+export const maxDuration = 300 // large channels need time; dedup makes retries safe
+
+export async function POST(request: NextRequest) {
+  if (!process.env.YOUTUBE_API_KEY) {
+    return NextResponse.json({ error: 'YOUTUBE_API_KEY not configured' }, { status: 503 })
+  }
+
+  const body = await request.json().catch(() => null)
+  const channelInput: string | undefined = body?.channel
+  if (!channelInput || typeof channelInput !== 'string') {
+    return NextResponse.json({ error: 'channel is required (URL, @handle, or channel ID)' }, { status: 400 })
+  }
+
+  let channelId: string
+  let channelTitle: string
+  let uploadsPlaylistId: string
+  try {
+    ;({ channelId, channelTitle, uploadsPlaylistId } = await resolveChannel(channelInput))
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Failed to resolve channel' },
+      { status: 422 },
+    )
+  }
+
+  let videos: Awaited<ReturnType<typeof getChannelVideos>>
+  try {
+    videos = await getChannelVideos(uploadsPlaylistId)
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Failed to fetch video list' },
+      { status: 422 },
+    )
+  }
+
+  // Process sequentially — each video triggers Claude + Voyage AI calls
+  const results = []
+  for (const { videoId, title } of videos) {
+    results.push(await ingestVideo(videoId, title, channelTitle))
+  }
+
+  const counts = results.reduce(
+    (acc, r) => { acc[r.status]++; return acc },
+    { ingested: 0, skipped: 0, no_transcript: 0, error: 0 },
+  )
+
+  return NextResponse.json({ channelId, channelTitle, total: videos.length, ...counts, results })
+}

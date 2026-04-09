@@ -12,7 +12,7 @@ type QueueItem = {
 type Document = {
   id: string
   created_at: string
-  source_type: 'email' | 'file' | 'url'
+  source_type: 'email' | 'file' | 'url' | 'youtube'
   source_ref: string | null
   source_from: string | null
   title: string | null
@@ -37,18 +37,24 @@ const SOURCE_ICONS: Record<string, string> = {
   email: '✉',
   file: '▣',
   url: '⬡',
+  youtube: '▶',
 }
 
 const SOURCE_LABELS: Record<string, string> = {
   email: 'Email',
   file: 'File',
   url: 'Link',
+  youtube: 'YouTube',
 }
 
 export default function Home() {
   const [url, setUrl] = useState('')
   const [urlStatus, setUrlStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
   const [urlMessage, setUrlMessage] = useState('')
+
+  const [ytChannel, setYtChannel] = useState('')
+  const [ytStatus, setYtStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
+  const [ytMessage, setYtMessage] = useState('')
 
   const [queue, setQueue] = useState<QueueItem[]>([])
   const [isDragging, setIsDragging] = useState(false)
@@ -92,6 +98,35 @@ export default function Home() {
     } catch {
       setUrlStatus('error')
       setUrlMessage('Network error')
+    }
+  }
+
+  async function submitYouTubeChannel(e: React.FormEvent) {
+    e.preventDefault()
+    if (!ytChannel.trim()) return
+    setYtStatus('loading')
+    setYtMessage('')
+    try {
+      const res = await fetch('/api/ingest/youtube-channel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel: ytChannel }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setYtStatus('ok')
+        setYtMessage(
+          `${data.channelTitle} — ${data.ingested} ingested, ${data.skipped} skipped, ${data.no_transcript} no transcript`
+        )
+        setYtChannel('')
+        fetchDocs()
+      } else {
+        setYtStatus('error')
+        setYtMessage(data.error ?? 'Unknown error')
+      }
+    } catch {
+      setYtStatus('error')
+      setYtMessage('Network error')
     }
   }
 
@@ -204,6 +239,37 @@ export default function Home() {
               {urlMessage}
             </p>
           )}
+        </section>
+
+        {/* YouTube channel */}
+        <section className="mb-8">
+          <h2 className="text-xs uppercase tracking-widest mb-3" style={{ color: '#9a9a8e', letterSpacing: '0.12em' }}>YouTube</h2>
+          <form onSubmit={submitYouTubeChannel} className="flex gap-2">
+            <input
+              type="text"
+              value={ytChannel}
+              onChange={(e) => setYtChannel(e.target.value)}
+              placeholder="https://www.youtube.com/@channel or @handle"
+              className="flex-1 rounded px-3 py-2 text-sm focus:outline-none"
+              style={{ background: '#eceae4', border: '1px solid #d8d6ce', color: '#1a1a18' }}
+            />
+            <button
+              type="submit"
+              disabled={ytStatus === 'loading'}
+              className="text-sm px-4 py-2 rounded transition-colors disabled:opacity-40"
+              style={{ background: '#1a1a18', color: '#f5f4f0' }}
+            >
+              {ytStatus === 'loading' ? '...' : 'Ingest'}
+            </button>
+          </form>
+          {ytMessage && (
+            <p className={`text-xs mt-2 ${ytStatus === 'ok' ? 'text-emerald-700' : 'text-red-600'}`}>
+              {ytMessage}
+            </p>
+          )}
+          <p className="text-xs mt-2" style={{ color: '#9a9a8e' }}>
+            Ingests all video transcripts. New videos are picked up automatically via <code>/api/poll-youtube</code>.
+          </p>
         </section>
 
         {/* File drop */}

@@ -7,8 +7,10 @@ alter table documents
 update documents set content_hash = md5(raw_text) where content_hash is null;
 
 -- Now enforce uniqueness going forward
-alter table documents
-  add constraint documents_content_hash_key unique (content_hash);
+do $$ begin
+  alter table documents add constraint documents_content_hash_key unique (content_hash);
+exception when duplicate_table then null;
+end $$;
 
 -- Make the column non-nullable for new inserts
 alter table documents

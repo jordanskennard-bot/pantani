@@ -5,7 +5,7 @@ import { chunkText } from './chunk'
 import { classifyDocument, generateChunkContexts } from './comprehend'
 
 type IngestInput = {
-  sourceType: 'email' | 'file' | 'url'
+  sourceType: 'email' | 'file' | 'url' | 'youtube'
   sourceRef?: string
   sourceFrom?: string
   title?: string

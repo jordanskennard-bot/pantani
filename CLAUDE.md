@@ -45,13 +45,15 @@ Every piece of knowledge follows the same path through `src/lib/ingest.ts`:
 | URL | `POST /api/ingest/url` | Fetches page, strips boilerplate with cheerio, follows redirects. Also handles PDF URLs. |
 | Email | `POST /api/ingest/email` | Webhook from Resend/Postmark. Ingests email body + follows all http/https links found in it. |
 | Gmail poll | `GET /api/poll-gmail` | Polls Gmail for emails labelled "Pantani", ingests them, moves to "Pantani-done". |
+| YouTube channel | `POST /api/ingest/youtube-channel` | Bulk-ingests all video transcripts from a channel. Body: `{ "channel": "@handle or URL" }`. Processes sequentially. Skips videos with no captions or already ingested (by `source_ref`). |
+| YouTube poll | `GET /api/poll-youtube` | Ingests new videos published within `YOUTUBE_LOOKBACK_DAYS` (default 7) from all channels in `YOUTUBE_CHANNEL_IDS`. Intended for Vercel cron. |
 
 ---
 
 ## Database schema
 
 **`documents`** — one row per ingested item
-- `id`, `created_at`, `source_type` (email/file/url), `source_ref`, `source_from`, `title`
+- `id`, `created_at`, `source_type` (email/file/url/youtube), `source_ref`, `source_from`, `title`
 - `raw_text` — full extracted text
 - `token_count` — rough estimate (chars / 4)
 - `summary` — Claude's 2-3 sentence classification
@@ -89,6 +91,9 @@ Set in `.env.local` locally, and in Vercel project settings for production. All 
 | `ANTHROPIC_API_KEY` | Anthropic key for Claude Haiku |
 | `INBOUND_EMAIL_SECRET` | Shared secret for webhook auth on `/api/ingest/email` |
 | `NEXT_PUBLIC_INBOUND_EMAIL` | Display email shown in UI (e.g. `pantani@passo.ad`) |
+| `YOUTUBE_API_KEY` | YouTube Data API v3 key (Google Cloud Console) |
+| `YOUTUBE_CHANNEL_IDS` | Comma-separated channels for `/api/poll-youtube` (handles, URLs, or UCxxx IDs) |
+| `YOUTUBE_LOOKBACK_DAYS` | How far back the poll route looks for new videos (default `7`) |
 
 ---
 
@@ -105,3 +110,11 @@ Set in `.env.local` locally, and in Vercel project settings for production. All 
 **Sequential file processing** — the UI queues multiple files and processes them one at a time. This avoids parallel Voyage AI calls hitting the 3 RPM free-tier rate limit.
 
 **Contextual retrieval** — each chunk is embedded as `context_prefix + chunk_text`, not just the raw chunk. This significantly improves retrieval accuracy for long documents where individual chunks lack context. The raw chunk is stored separately so agents receive clean text.
+
+**YouTube channel resolution in one API call** — `resolveChannel` in `src/lib/youtube.ts` fetches `id`, `snippet`, and `contentDetails` in a single `channels.list` call, returning both the channel title and uploads playlist ID together. This avoids the naive pattern of a second call to get the playlist ID.
+
+**YouTube dedup by `source_ref`** — YouTube videos are checked against `documents.source_ref` (the watch URL) before fetching any transcript. This is cheaper than the MD5 content hash check lower in the pipeline and avoids unnecessary YouTube API calls on re-polls.
+
+**`youtube-transcript`** — fetches public captions without a quota-bearing API call. Videos without captions (no auto-generated or manual) return `no_transcript` and are skipped silently.
+
+**Vercel cron for YouTube** — add to `vercel.json`: `{ "crons": [{ "path": "/api/poll-youtube", "schedule": "0 6 * * *" }] }`. The lookback window overlaps generously so occasional missed runs don't lose videos.
