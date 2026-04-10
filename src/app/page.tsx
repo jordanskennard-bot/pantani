@@ -62,6 +62,16 @@ export default function Home() {
 
   const [documents, setDocuments] = useState<Document[]>([])
   const [docsLoading, setDocsLoading] = useState(true)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  async function deleteDoc(id: string) {
+    setDeletingId(id)
+    const res = await fetch(`/api/knowledge?id=${id}`, { method: 'DELETE' })
+    if (res.ok) {
+      setDocuments(d => d.filter(doc => doc.id !== id))
+    }
+    setDeletingId(null)
+  }
 
   const fetchDocs = useCallback(async () => {
     const res = await fetch('/api/knowledge')
@@ -373,11 +383,24 @@ export default function Home() {
                         <p className="text-xs truncate mt-0.5" style={{ color: '#9a9a8e' }}>{doc.source_from}</p>
                       )}
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-xs" style={{ color: '#9a9a8e' }}>{formatDate(doc.created_at)}</p>
-                      {doc.token_count && (
-                        <p className="text-xs mt-0.5" style={{ color: '#b8b8ae' }}>~{doc.token_count.toLocaleString()} tok</p>
-                      )}
+                    <div className="text-right shrink-0 flex items-start gap-3">
+                      <div>
+                        <p className="text-xs" style={{ color: '#9a9a8e' }}>{formatDate(doc.created_at)}</p>
+                        {doc.token_count && (
+                          <p className="text-xs mt-0.5" style={{ color: '#b8b8ae' }}>~{doc.token_count.toLocaleString()} tok</p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => deleteDoc(doc.id)}
+                        disabled={deletingId === doc.id}
+                        className="text-xs leading-none mt-0.5 transition-colors disabled:opacity-40"
+                        style={{ color: '#b8b8ae' }}
+                        onMouseEnter={e => (e.currentTarget.style.color = '#c0392b')}
+                        onMouseLeave={e => (e.currentTarget.style.color = '#b8b8ae')}
+                        title="Remove document"
+                      >
+                        {deletingId === doc.id ? '...' : '×'}
+                      </button>
                     </div>
                   </div>
                   {doc.summary && (

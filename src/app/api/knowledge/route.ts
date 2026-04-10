@@ -19,6 +19,17 @@ export async function GET() {
   return NextResponse.json({ documents: data })
 }
 
+// DELETE /api/knowledge?id=... — remove a document and its chunks (cascade)
+export async function DELETE(request: NextRequest) {
+  const id = new URL(request.url).searchParams.get('id')
+  if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
+
+  const { error } = await supabase.from('documents').delete().eq('id', id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  return NextResponse.json({ success: true })
+}
+
 // POST /api/knowledge/search — semantic search over the knowledge store
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null)
