@@ -1,10 +1,25 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.SUPABASE_URL!
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+// Initialised lazily so env vars are read at call time, not module load time.
+// Module-level initialisation runs during Next.js build when env vars are absent.
+let _client: SupabaseClient | null = null
 
-// Server-side only — uses service role key, never exposed to the client
-export const supabase = createClient(supabaseUrl, supabaseKey)
+export function getSupabase(): SupabaseClient {
+  if (!_client) {
+    const url = process.env.SUPABASE_URL
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+    if (!url || !key) throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set')
+    _client = createClient(url, key)
+  }
+  return _client
+}
+
+// Backwards-compatible named export used throughout the codebase
+export const supabase = new Proxy({} as SupabaseClient, {
+  get(_target, prop) {
+    return (getSupabase() as unknown as Record<string | symbol, unknown>)[prop]
+  },
+})
 
 export type Document = {
   id: string
