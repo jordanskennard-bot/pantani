@@ -55,7 +55,9 @@ export async function POST(request: NextRequest) {
 
   let videos: Awaited<ReturnType<typeof getChannelVideos>>
   try {
-    videos = await getChannelVideos(uploadsPlaylistId)
+    const oneYearAgo = new Date()
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
+    videos = await getChannelVideos(uploadsPlaylistId, oneYearAgo)
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Failed to fetch video list' },
