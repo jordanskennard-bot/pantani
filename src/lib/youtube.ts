@@ -111,44 +111,80 @@ type CaptionTrack = { baseUrl: string; languageCode: string; kind?: string }
 // that YouTube embeds per-session in the watch page, then call the player API with
 // the exact client name/version the library uses (ANDROID / 20.10.38).
 async function fetchTranscript(videoId: string): Promise<string> {
+  console.log(`[fetchTranscript] Starting for videoId=${videoId}`)
+
   // 1. Fetch the watch page — add CONSENT cookie to skip EU consent wall
-  const pageRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept-Language': 'en-US,en;q=0.9',
-      'Cookie': 'CONSENT=YES+42',
-    },
-    signal: AbortSignal.timeout(15_000),
-  })
+  let pageRes: Response
+  try {
+    pageRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Cookie': 'CONSENT=YES+42',
+      },
+      signal: AbortSignal.timeout(15_000),
+    })
+  } catch (err) {
+    console.error(`[fetchTranscript] Page fetch threw: ${err}`)
+    throw err
+  }
+  console.log(`[fetchTranscript] Page fetch status=${pageRes.status} ok=${pageRes.ok}`)
   if (!pageRes.ok) throw new Error(`YouTube page fetch failed: ${pageRes.status}`)
   const html = await pageRes.text()
+  console.log(`[fetchTranscript] Page HTML length=${html.length}`)
 
   // 2. Extract the dynamic API key YouTube embeds in the page
   const keyMatch = html.match(/"INNERTUBE_API_KEY":\s*"([a-zA-Z0-9_-]+)"/)
-  if (!keyMatch) throw new Error('Could not extract INNERTUBE_API_KEY from page')
+  if (!keyMatch) {
+    // Log a snippet to see what YouTube actually returned
+    const snippet = html.slice(0, 500).replace(/\n/g, ' ')
+    console.error(`[fetchTranscript] INNERTUBE_API_KEY not found. HTML start: ${snippet}`)
+    throw new Error('Could not extract INNERTUBE_API_KEY from page')
+  }
   const apiKey = keyMatch[1]
+  console.log(`[fetchTranscript] INNERTUBE_API_KEY found: ${apiKey.slice(0, 8)}...`)
 
   // 3. Call the player API — same client name/version as youtube-transcript-api uses
-  const playerRes = await fetch(
-    `https://www.youtube.com/youtubei/v1/player?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        context: { client: { clientName: 'ANDROID', clientVersion: '20.10.38' } },
-        videoId,
-      }),
-      signal: AbortSignal.timeout(15_000),
-    }
-  )
+  let playerRes: Response
+  try {
+    playerRes = await fetch(
+      `https://www.youtube.com/youtubei/v1/player?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          context: { client: { clientName: 'ANDROID', clientVersion: '20.10.38' } },
+          videoId,
+        }),
+        signal: AbortSignal.timeout(15_000),
+      }
+    )
+  } catch (err) {
+    console.error(`[fetchTranscript] Player API fetch threw: ${err}`)
+    throw err
+  }
+  console.log(`[fetchTranscript] Player API status=${playerRes.status} ok=${playerRes.ok}`)
   if (!playerRes.ok) throw new Error(`Player API failed: ${playerRes.status}`)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const playerData = await playerRes.json() as any
+  const playabilityStatus = playerData?.playabilityStatus?.status ?? 'unknown'
+  const playabilityReason = playerData?.playabilityStatus?.reason ?? ''
   const tracks: CaptionTrack[] =
     playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks ?? []
 
-  if (!tracks.length) throw new Error('No caption tracks in player response — video may not have a transcript')
+  console.log(`[fetchTranscript] playabilityStatus=${playabilityStatus} reason="${playabilityReason}" trackCount=${tracks.length}`)
+
+  if (tracks.length > 0) {
+    console.log(`[fetchTranscript] Available tracks: ${tracks.map(t => `${t.languageCode}${t.kind ? `(${t.kind})` : ''}`).join(', ')}`)
+  } else {
+    // Log captions key presence to distinguish "no captions key" from "empty track list"
+    const hasCaptionsKey = !!playerData?.captions
+    const hasRenderer = !!playerData?.captions?.playerCaptionsTracklistRenderer
+    console.error(`[fetchTranscript] No tracks. hasCaptionsKey=${hasCaptionsKey} hasRenderer=${hasRenderer}`)
+  }
+
+  if (!tracks.length) throw new Error(`No caption tracks in player response (playability=${playabilityStatus}${playabilityReason ? ': ' + playabilityReason : ''})`)
 
   // 4. Pick best English track, fall back to anything available
   const track =
@@ -156,13 +192,21 @@ async function fetchTranscript(videoId: string): Promise<string> {
     tracks.find(t => t.languageCode === 'en') ??
     tracks.find(t => t.kind === 'asr') ??
     tracks[0]
+  console.log(`[fetchTranscript] Selected track: lang=${track.languageCode} kind=${track.kind ?? 'manual'}`)
 
   // 5. Download and parse the caption JSON
-  const captionRes = await fetch(`${track.baseUrl}&fmt=json3`, { signal: AbortSignal.timeout(15_000) })
+  let captionRes: Response
+  try {
+    captionRes = await fetch(`${track.baseUrl}&fmt=json3`, { signal: AbortSignal.timeout(15_000) })
+  } catch (err) {
+    console.error(`[fetchTranscript] Caption download threw: ${err}`)
+    throw err
+  }
+  console.log(`[fetchTranscript] Caption download status=${captionRes.status}`)
   if (!captionRes.ok) throw new Error(`Caption download failed: ${captionRes.status}`)
 
   const captionData = await captionRes.json() as { events: Array<{ segs?: Array<{ utf8: string }> }> }
-  return captionData.events
+  const text = captionData.events
     .filter(e => e.segs)
     .flatMap(e => e.segs!)
     .map(s => s.utf8)
@@ -170,6 +214,8 @@ async function fetchTranscript(videoId: string): Promise<string> {
     .join(' ')
     .replace(/\s+/g, ' ')
     .trim()
+  console.log(`[fetchTranscript] Transcript length=${text.length} chars`)
+  return text
 }
 
 export type IngestVideoResult = {

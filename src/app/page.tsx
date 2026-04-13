@@ -55,6 +55,8 @@ export default function Home() {
   const [ytChannel, setYtChannel] = useState('')
   const [ytStatus, setYtStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
   const [ytMessage, setYtMessage] = useState('')
+  const [ytResults, setYtResults] = useState<Array<{ videoId: string; title: string; status: string; error?: string }>>([])
+
 
   const [queue, setQueue] = useState<QueueItem[]>([])
   const [isDragging, setIsDragging] = useState(false)
@@ -116,6 +118,7 @@ export default function Home() {
     if (!ytChannel.trim()) return
     setYtStatus('loading')
     setYtMessage('')
+    setYtResults([])
     try {
       const res = await fetch('/api/ingest/youtube-channel', {
         method: 'POST',
@@ -124,11 +127,11 @@ export default function Home() {
       })
       const data = await res.json()
       if (res.ok) {
-        const firstError = data.results?.find((r: { status: string; error?: string }) => r.error)?.error
         const label = data.channelTitle ?? 'Video'
-        const summary = `${label} — ${data.ingested} ingested, ${data.skipped} skipped, ${data.no_transcript} no transcript`
+        const summary = `${label} — ${data.ingested} ingested, ${data.skipped} skipped, ${data.no_transcript} no transcript, ${data.error ?? 0} errors`
         setYtStatus(data.ingested > 0 || data.skipped > 0 ? 'ok' : 'error')
-        setYtMessage(firstError ? `${summary} (${firstError})` : summary)
+        setYtMessage(summary)
+        setYtResults(data.results ?? [])
         if (data.ingested > 0) { setYtChannel(''); fetchDocs() }
       } else {
         setYtStatus('error')
@@ -276,6 +279,27 @@ export default function Home() {
             <p className={`text-xs mt-2 ${ytStatus === 'ok' ? 'text-emerald-700' : 'text-red-600'}`}>
               {ytMessage}
             </p>
+          )}
+          {ytResults.length > 0 && (
+            <ul className="mt-2 space-y-0.5 max-h-48 overflow-y-auto">
+              {ytResults.map((r) => (
+                <li key={r.videoId} className="text-xs flex gap-2" style={{ color: '#6b6b63' }}>
+                  <span className="shrink-0" style={{
+                    color: r.status === 'ingested' ? '#047857'
+                         : r.status === 'skipped' ? '#9a9a8e'
+                         : '#dc2626'
+                  }}>
+                    {r.status === 'ingested' ? '✓' : r.status === 'skipped' ? '–' : '✕'}
+                  </span>
+                  <span className="truncate" title={r.error ?? r.title}>{r.title}</span>
+                  {r.error && (
+                    <span className="shrink-0 truncate max-w-xs" style={{ color: '#dc2626' }} title={r.error}>
+                      {r.error}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
           )}
           <p className="text-xs mt-2" style={{ color: '#9a9a8e' }}>
             Ingests all video transcripts. New videos are picked up automatically via <code>/api/poll-youtube</code>.
