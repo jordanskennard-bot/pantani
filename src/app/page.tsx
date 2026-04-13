@@ -124,12 +124,12 @@ export default function Home() {
       })
       const data = await res.json()
       if (res.ok) {
-        setYtStatus('ok')
-        setYtMessage(
-          `${data.channelTitle} — ${data.ingested} ingested, ${data.skipped} skipped, ${data.no_transcript} no transcript`
-        )
-        setYtChannel('')
-        fetchDocs()
+        const firstError = data.results?.find((r: { status: string; error?: string }) => r.error)?.error
+        const label = data.channelTitle ?? 'Video'
+        const summary = `${label} — ${data.ingested} ingested, ${data.skipped} skipped, ${data.no_transcript} no transcript`
+        setYtStatus(data.ingested > 0 || data.skipped > 0 ? 'ok' : 'error')
+        setYtMessage(firstError ? `${summary} (${firstError})` : summary)
+        if (data.ingested > 0) { setYtChannel(''); fetchDocs() }
       } else {
         setYtStatus('error')
         setYtMessage(data.error ?? 'Unknown error')
