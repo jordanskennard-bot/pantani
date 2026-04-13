@@ -107,8 +107,62 @@ async function isVideoIngested(videoId: string): Promise<boolean> {
 
 type CaptionTrack = { baseUrl: string; languageCode: string; kind?: string }
 
-function eventsToText(events: Array<{ segs?: Array<{ utf8: string }> }>): string {
-  return events
+// Mirror what youtube-transcript-api does: extract the dynamic INNERTUBE_API_KEY
+// that YouTube embeds per-session in the watch page, then call the player API with
+// the exact client name/version the library uses (ANDROID / 20.10.38).
+async function fetchTranscript(videoId: string): Promise<string> {
+  // 1. Fetch the watch page — add CONSENT cookie to skip EU consent wall
+  const pageRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Cookie': 'CONSENT=YES+42',
+    },
+    signal: AbortSignal.timeout(15_000),
+  })
+  if (!pageRes.ok) throw new Error(`YouTube page fetch failed: ${pageRes.status}`)
+  const html = await pageRes.text()
+
+  // 2. Extract the dynamic API key YouTube embeds in the page
+  const keyMatch = html.match(/"INNERTUBE_API_KEY":\s*"([a-zA-Z0-9_-]+)"/)
+  if (!keyMatch) throw new Error('Could not extract INNERTUBE_API_KEY from page')
+  const apiKey = keyMatch[1]
+
+  // 3. Call the player API — same client name/version as youtube-transcript-api uses
+  const playerRes = await fetch(
+    `https://www.youtube.com/youtubei/v1/player?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        context: { client: { clientName: 'ANDROID', clientVersion: '20.10.38' } },
+        videoId,
+      }),
+      signal: AbortSignal.timeout(15_000),
+    }
+  )
+  if (!playerRes.ok) throw new Error(`Player API failed: ${playerRes.status}`)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const playerData = await playerRes.json() as any
+  const tracks: CaptionTrack[] =
+    playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks ?? []
+
+  if (!tracks.length) throw new Error('No caption tracks in player response — video may not have a transcript')
+
+  // 4. Pick best English track, fall back to anything available
+  const track =
+    tracks.find(t => t.languageCode === 'en' && t.kind !== 'asr') ??
+    tracks.find(t => t.languageCode === 'en') ??
+    tracks.find(t => t.kind === 'asr') ??
+    tracks[0]
+
+  // 5. Download and parse the caption JSON
+  const captionRes = await fetch(`${track.baseUrl}&fmt=json3`, { signal: AbortSignal.timeout(15_000) })
+  if (!captionRes.ok) throw new Error(`Caption download failed: ${captionRes.status}`)
+
+  const captionData = await captionRes.json() as { events: Array<{ segs?: Array<{ utf8: string }> }> }
+  return captionData.events
     .filter(e => e.segs)
     .flatMap(e => e.segs!)
     .map(s => s.utf8)
@@ -116,59 +170,6 @@ function eventsToText(events: Array<{ segs?: Array<{ utf8: string }> }>): string
     .join(' ')
     .replace(/\s+/g, ' ')
     .trim()
-}
-
-function pickTrack(tracks: CaptionTrack[]): CaptionTrack {
-  return (
-    tracks.find(t => t.languageCode === 'en' && t.kind !== 'asr') ??
-    tracks.find(t => t.languageCode === 'en') ??
-    tracks.find(t => t.kind === 'asr') ??
-    tracks[0]
-  )
-}
-
-async function downloadCaptionTrack(track: CaptionTrack): Promise<string> {
-  const res = await fetch(`${track.baseUrl}&fmt=json3`, { signal: AbortSignal.timeout(15_000) })
-  if (!res.ok) throw new Error(`Caption download failed: ${res.status}`)
-  const data = await res.json() as { events: Array<{ segs?: Array<{ utf8: string }> }> }
-  return eventsToText(data.events)
-}
-
-// Use the InnerTube /player endpoint — returns structured JSON including caption URLs.
-// More reliable than page scraping since it's YouTube's own app API.
-async function fetchTracksViaPlayerApi(videoId: string, clientName: string, clientVersion: string): Promise<CaptionTrack[]> {
-  const res = await fetch('https://www.youtube.com/youtubei/v1/player', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      context: { client: { clientName, clientVersion, hl: 'en', gl: 'US' } },
-      videoId,
-    }),
-    signal: AbortSignal.timeout(15_000),
-  })
-  if (!res.ok) return []
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const data = await res.json() as any
-  return data?.captions?.playerCaptionsTracklistRenderer?.captionTracks ?? []
-}
-
-async function fetchTranscript(videoId: string): Promise<string> {
-  // Try multiple InnerTube clients — each mimics a different YouTube app.
-  // TV and Android clients are least likely to be blocked from server IPs.
-  const clients: [string, string][] = [
-    ['TVHTML5', '7.20240101.16.00'],
-    ['ANDROID', '19.09.37'],
-    ['WEB', '2.20240313.05.00'],
-  ]
-
-  for (const [clientName, clientVersion] of clients) {
-    const tracks = await fetchTracksViaPlayerApi(videoId, clientName, clientVersion)
-    if (tracks.length) {
-      return downloadCaptionTrack(pickTrack(tracks))
-    }
-  }
-
-  throw new Error('No caption tracks returned by any InnerTube client — video may not have a transcript')
 }
 
 export type IngestVideoResult = {
