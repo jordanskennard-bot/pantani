@@ -46,7 +46,7 @@ Every piece of knowledge follows the same path through `src/lib/ingest.ts`:
 | URL | `POST /api/ingest/url` | Fetches page, strips boilerplate with cheerio, follows redirects. Also handles PDF URLs. |
 | Email | `POST /api/ingest/email` | Webhook from Resend/Postmark. Ingests email body + follows all http/https links found in it. |
 | Gmail poll | `GET /api/poll-gmail` | Polls Gmail for emails labelled "Pantani", ingests them, moves to "Pantani-done". |
-| YouTube channel | `POST /api/ingest/youtube-channel` | Bulk-ingests all video transcripts from a channel. Body: `{ "channel": "@handle or URL" }`. Processes sequentially. Skips videos with no captions or already ingested (by `source_ref`). |
+| YouTube channel | `POST /api/ingest/youtube-channel` | Bulk-ingests transcripts from a channel (videos up to 1 year old) or a single video URL. Body: `{ "channel": "@handle, URL, or watch URL" }`. Processes sequentially. Skips videos already ingested (by `source_ref`). For large channels it will time out mid-run — re-submit to continue; dedup makes retries safe. |
 | YouTube poll | `GET /api/poll-youtube` | Ingests new videos published within `YOUTUBE_LOOKBACK_DAYS` (default 7) from all channels in `YOUTUBE_CHANNEL_IDS`. Intended for Vercel cron. |
 
 ---
@@ -82,7 +82,7 @@ Fixed set — do not change without updating `src/lib/comprehend.ts` and telling
 
 ## Environment variables
 
-Set in `.env.local` locally, and in Vercel project settings for production. All five must be present or the server will fail silently.
+Set in `.env.local` locally, and in Vercel project settings for production. All must be present or the server will fail silently.
 
 | Variable | What it is |
 |---|---|
@@ -115,8 +115,12 @@ Set in `.env.local` locally, and in Vercel project settings for production. All 
 
 **YouTube channel resolution in one API call** — `resolveChannel` in `src/lib/youtube.ts` fetches `id`, `snippet`, and `contentDetails` in a single `channels.list` call, returning both the channel title and uploads playlist ID together. This avoids the naive pattern of a second call to get the playlist ID.
 
-**YouTube dedup by `source_ref`** — YouTube videos are checked against `documents.source_ref` (the watch URL) before fetching any transcript. This is cheaper than the MD5 content hash check lower in the pipeline and avoids unnecessary YouTube API calls on re-polls.
+**YouTube dedup by `source_ref`** — YouTube videos are checked against `documents.source_ref` (the watch URL) before fetching any transcript. This is cheaper than the MD5 content hash check lower in the pipeline and avoids unnecessary Supadata API calls on re-polls.
 
-**`youtube-transcript`** — fetches public captions without a quota-bearing API call. Videos without captions (no auto-generated or manual) return `no_transcript` and are skipped silently.
+**YouTube transcript via Supadata** — Vercel runs in AWS datacenters; YouTube returns `LOGIN_REQUIRED` to those IPs regardless of InnerTube client or headers. Supadata (`api.supadata.ai/v1/youtube/transcript`) proxies the request transparently. Falls back to parsing `ytInitialPlayerResponse` from the watch page HTML if `SUPADATA_API_KEY` is unset. Free tier is 100 credits/month (1 per transcript) — fine for ongoing polls, but a bulk channel import of 100+ videos will need a paid plan.
+
+**YouTube single-video title lookup** — when a watch URL is submitted (rather than a channel), the route calls `youtube.v3/videos?part=snippet` to get the real title and channel name before ingesting. Falls back to the videoId if the API call fails.
+
+**YouTube channel age cutoff** — `getChannelVideos` accepts a `publishedAfter` date and stops paginating once it hits older content (uploads playlist is newest-first). The channel route passes `oneYearAgo` so stale videos are never fetched.
 
 **Vercel cron for YouTube** — add to `vercel.json`: `{ "crons": [{ "path": "/api/poll-youtube", "schedule": "0 6 * * *" }] }`. The lookback window overlaps generously so occasional missed runs don't lose videos.
