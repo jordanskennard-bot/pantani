@@ -1,4 +1,5 @@
 @AGENTS.md
+@../BRAND.md
 
 # Pantani — Libro di corsa
 
