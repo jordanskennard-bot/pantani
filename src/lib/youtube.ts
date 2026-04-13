@@ -107,37 +107,6 @@ async function isVideoIngested(videoId: string): Promise<boolean> {
 
 type CaptionTrack = { baseUrl: string; languageCode: string; kind?: string }
 
-function extractCaptionTracks(html: string): CaptionTrack[] {
-  // Use bracket-depth tracking instead of regex — YouTube's JSON contains nested
-  // objects and \u0026-encoded characters that break simple regex approaches.
-  const marker = '"captionTracks":'
-  const markerIdx = html.indexOf(marker)
-  if (markerIdx === -1) return []
-
-  const startIdx = html.indexOf('[', markerIdx)
-  if (startIdx === -1) return []
-
-  let depth = 0
-  for (let i = startIdx; i < html.length; i++) {
-    if (html[i] === '[') depth++
-    else if (html[i] === ']') {
-      depth--
-      if (depth === 0) {
-        try {
-          // Unescape Unicode escapes YouTube uses in the embedded JSON
-          const jsonStr = html.slice(startIdx, i + 1)
-            .replace(/\\u0026/g, '&')
-            .replace(/\\u003d/g, '=')
-          return JSON.parse(jsonStr)
-        } catch {
-          return []
-        }
-      }
-    }
-  }
-  return []
-}
-
 function eventsToText(events: Array<{ segs?: Array<{ utf8: string }> }>): string {
   return events
     .filter(e => e.segs)
@@ -149,89 +118,57 @@ function eventsToText(events: Array<{ segs?: Array<{ utf8: string }> }>): string
     .trim()
 }
 
-async function fetchTranscriptInnerTube(videoId: string): Promise<string> {
-  // YouTube's InnerTube API — used by the YouTube app, works reliably from server IPs.
-  // Params: protobuf field 1 (string) = videoId, base64-encoded.
-  const idBytes = Buffer.from(videoId, 'utf-8')
-  const params = Buffer.concat([Buffer.from([0x0a, idBytes.length]), idBytes]).toString('base64')
-
-  const res = await fetch('https://www.youtube.com/youtubei/v1/get_transcript', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    },
-    body: JSON.stringify({
-      context: {
-        client: { hl: 'en', gl: 'US', clientName: 'WEB', clientVersion: '2.20240313.05.00' },
-      },
-      params,
-    }),
-    signal: AbortSignal.timeout(15_000),
-  })
-
-  if (!res.ok) throw new Error(`InnerTube API: ${res.status}`)
-
-  const data = await res.json() as Record<string, unknown>
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const cueGroups: any[] = (data as any)
-    ?.actions?.[0]
-    ?.updateEngagementPanelAction
-    ?.content
-    ?.transcriptRenderer
-    ?.body
-    ?.transcriptBodyRenderer
-    ?.cueGroups
-
-  if (!Array.isArray(cueGroups) || cueGroups.length === 0) {
-    throw new Error('No transcript in InnerTube response')
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return cueGroups
-    .flatMap((g: any) => g?.transcriptCueGroupRenderer?.cues ?? [])
-    .map((c: any) => c?.transcriptCueRenderer?.cue?.simpleText ?? '')
-    .filter(Boolean)
-    .join(' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
-async function fetchTranscript(videoId: string): Promise<string> {
-  // 1. Try InnerTube API (most reliable from server IPs)
-  try {
-    const text = await fetchTranscriptInnerTube(videoId)
-    if (text) return text
-  } catch {
-    // fall through
-  }
-
-  // 2. Fall back to page scraping with robust JSON extraction
-  const pageRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept-Language': 'en-US,en;q=0.9',
-    },
-    signal: AbortSignal.timeout(15_000),
-  })
-  if (!pageRes.ok) throw new Error(`YouTube page fetch failed: ${pageRes.status}`)
-
-  const html = await pageRes.text()
-  const tracks = extractCaptionTracks(html)
-  if (!tracks.length) throw new Error('No captions found — video may not have a transcript')
-
-  const track =
+function pickTrack(tracks: CaptionTrack[]): CaptionTrack {
+  return (
     tracks.find(t => t.languageCode === 'en' && t.kind !== 'asr') ??
     tracks.find(t => t.languageCode === 'en') ??
     tracks.find(t => t.kind === 'asr') ??
     tracks[0]
+  )
+}
 
-  const captionRes = await fetch(`${track.baseUrl}&fmt=json3`, { signal: AbortSignal.timeout(15_000) })
-  if (!captionRes.ok) throw new Error(`Caption download failed: ${captionRes.status}`)
-
-  const data = await captionRes.json() as { events: Array<{ segs?: Array<{ utf8: string }> }> }
+async function downloadCaptionTrack(track: CaptionTrack): Promise<string> {
+  const res = await fetch(`${track.baseUrl}&fmt=json3`, { signal: AbortSignal.timeout(15_000) })
+  if (!res.ok) throw new Error(`Caption download failed: ${res.status}`)
+  const data = await res.json() as { events: Array<{ segs?: Array<{ utf8: string }> }> }
   return eventsToText(data.events)
+}
+
+// Use the InnerTube /player endpoint — returns structured JSON including caption URLs.
+// More reliable than page scraping since it's YouTube's own app API.
+async function fetchTracksViaPlayerApi(videoId: string, clientName: string, clientVersion: string): Promise<CaptionTrack[]> {
+  const res = await fetch('https://www.youtube.com/youtubei/v1/player', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      context: { client: { clientName, clientVersion, hl: 'en', gl: 'US' } },
+      videoId,
+    }),
+    signal: AbortSignal.timeout(15_000),
+  })
+  if (!res.ok) return []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const data = await res.json() as any
+  return data?.captions?.playerCaptionsTracklistRenderer?.captionTracks ?? []
+}
+
+async function fetchTranscript(videoId: string): Promise<string> {
+  // Try multiple InnerTube clients — each mimics a different YouTube app.
+  // TV and Android clients are least likely to be blocked from server IPs.
+  const clients: [string, string][] = [
+    ['TVHTML5', '7.20240101.16.00'],
+    ['ANDROID', '19.09.37'],
+    ['WEB', '2.20240313.05.00'],
+  ]
+
+  for (const [clientName, clientVersion] of clients) {
+    const tracks = await fetchTracksViaPlayerApi(videoId, clientName, clientVersion)
+    if (tracks.length) {
+      return downloadCaptionTrack(pickTrack(tracks))
+    }
+  }
+
+  throw new Error('No caption tracks returned by any InnerTube client — video may not have a transcript')
 }
 
 export type IngestVideoResult = {
