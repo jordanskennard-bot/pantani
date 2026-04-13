@@ -4,6 +4,11 @@ import { resolveChannel, getChannelVideos, ingestVideo } from '@/lib/youtube'
 export const runtime = 'nodejs'
 export const maxDuration = 300 // large channels need time; dedup makes retries safe
 
+function extractVideoId(url: string): string | null {
+  const m = url.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
+  return m ? m[1] : null
+}
+
 export async function POST(request: NextRequest) {
   if (!process.env.YOUTUBE_API_KEY) {
     return NextResponse.json({ error: 'YOUTUBE_API_KEY not configured' }, { status: 503 })
@@ -15,6 +20,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'channel is required (URL, @handle, or channel ID)' }, { status: 400 })
   }
 
+  // Single video URL — ingest just that one video
+  const videoId = extractVideoId(channelInput)
+  if (videoId) {
+    const result = await ingestVideo(videoId, videoId, 'unknown')
+    return NextResponse.json({ total: 1, results: [result], ...countResults([result]) })
+  }
+
+  // Channel URL / handle
   let channelId: string
   let channelTitle: string
   let uploadsPlaylistId: string
@@ -37,16 +50,17 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // Process sequentially — each video triggers Claude + Voyage AI calls
   const results = []
   for (const { videoId, title } of videos) {
     results.push(await ingestVideo(videoId, title, channelTitle))
   }
 
-  const counts = results.reduce(
-    (acc, r) => { acc[r.status]++; return acc },
+  return NextResponse.json({ channelId, channelTitle, total: videos.length, ...countResults(results), results })
+}
+
+function countResults(results: { status: string }[]) {
+  return results.reduce(
+    (acc, r) => { acc[r.status as keyof typeof acc]++; return acc },
     { ingested: 0, skipped: 0, no_transcript: 0, error: 0 },
   )
-
-  return NextResponse.json({ channelId, channelTitle, total: videos.length, ...counts, results })
 }

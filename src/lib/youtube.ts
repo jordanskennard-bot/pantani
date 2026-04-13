@@ -106,9 +106,58 @@ async function isVideoIngested(videoId: string): Promise<boolean> {
 }
 
 async function fetchTranscript(videoId: string): Promise<string> {
-  const { YoutubeTranscript } = await import('youtube-transcript')
-  const items = await YoutubeTranscript.fetchTranscript(videoId)
-  return items.map((i: { text: string }) => i.text).join(' ')
+  // Fetch the video page with browser-like headers — the youtube-transcript
+  // package omits these and gets blocked by YouTube on server IP ranges.
+  const pageRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    },
+    signal: AbortSignal.timeout(15_000),
+  })
+
+  if (!pageRes.ok) throw new Error(`YouTube page fetch failed: ${pageRes.status}`)
+
+  const html = await pageRes.text()
+
+  const match = html.match(/"captionTracks":(\[.*?\])/)
+  if (!match) throw new Error('No captions in page data — video may have no transcript')
+
+  type CaptionTrack = { baseUrl: string; languageCode: string; kind?: string }
+  let tracks: CaptionTrack[]
+  try {
+    tracks = JSON.parse(match[1])
+  } catch {
+    throw new Error('Failed to parse caption tracks JSON')
+  }
+
+  if (tracks.length === 0) throw new Error('No caption tracks available')
+
+  // Prefer manual English, then auto-generated English, then any track
+  const track =
+    tracks.find(t => t.languageCode === 'en' && t.kind !== 'asr') ??
+    tracks.find(t => t.languageCode === 'en') ??
+    tracks.find(t => t.kind === 'asr') ??
+    tracks[0]
+
+  const captionRes = await fetch(`${track.baseUrl}&fmt=json3`, {
+    signal: AbortSignal.timeout(15_000),
+  })
+  if (!captionRes.ok) throw new Error(`Caption download failed: ${captionRes.status}`)
+
+  const data = await captionRes.json() as {
+    events: Array<{ segs?: Array<{ utf8: string }> }>
+  }
+
+  return data.events
+    .filter(e => e.segs)
+    .flatMap(e => e.segs!)
+    .map(s => s.utf8)
+    .filter(t => t !== '\n')
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 export type IngestVideoResult = {
@@ -130,8 +179,8 @@ export async function ingestVideo(
   let transcript: string
   try {
     transcript = await fetchTranscript(videoId)
-  } catch {
-    return { videoId, title, status: 'no_transcript' }
+  } catch (err) {
+    return { videoId, title, status: 'no_transcript', error: err instanceof Error ? err.message : String(err) }
   }
 
   if (!transcript.trim()) {
