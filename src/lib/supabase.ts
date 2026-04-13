@@ -17,7 +17,7 @@ export function getSupabase(): SupabaseClient {
 export type Document = {
   id: string
   created_at: string
-  source_type: 'email' | 'file' | 'url'
+  source_type: 'email' | 'file' | 'url' | 'youtube'
   source_ref: string | null
   source_from: string | null
   title: string | null
