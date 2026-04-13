@@ -1,5 +1,5 @@
 import { google } from 'googleapis'
-import { supabase } from './supabase'
+import { getSupabase } from './supabase'
 import { ingest } from './ingest'
 
 function getYouTube() {
@@ -97,7 +97,7 @@ function videoUrl(videoId: string): string {
 }
 
 async function isVideoIngested(videoId: string): Promise<boolean> {
-  const { data } = await supabase
+  const { data } = await getSupabase()
     .from('documents')
     .select('id')
     .eq('source_ref', videoUrl(videoId))

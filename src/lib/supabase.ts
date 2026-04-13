@@ -14,13 +14,6 @@ export function getSupabase(): SupabaseClient {
   return _client
 }
 
-// Backwards-compatible named export used throughout the codebase
-export const supabase = new Proxy({} as SupabaseClient, {
-  get(_target, prop) {
-    return (getSupabase() as unknown as Record<string | symbol, unknown>)[prop]
-  },
-})
-
 export type Document = {
   id: string
   created_at: string

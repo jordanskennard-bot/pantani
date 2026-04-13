@@ -1,5 +1,5 @@
 import { createHash } from 'crypto'
-import { supabase } from './supabase'
+import { getSupabase } from './supabase'
 import { embedTexts } from './embeddings'
 import { chunkText } from './chunk'
 import { classifyDocument, generateChunkContexts } from './comprehend'
@@ -33,7 +33,7 @@ export async function ingest(input: IngestInput): Promise<IngestResult> {
 
   // 0. Duplicate check — hash the text and bail early if we've seen it before
   const contentHash = createHash('md5').update(text).digest('hex')
-  const { data: existing } = await supabase
+  const { data: existing } = await getSupabase()
     .from('documents')
     .select('id, tags, summary')
     .eq('content_hash', contentHash)
@@ -53,7 +53,7 @@ export async function ingest(input: IngestInput): Promise<IngestResult> {
   const comprehension = await classifyDocument(text)
 
   // 2. Insert the document record with comprehension data
-  const { data: doc, error: docError } = await supabase
+  const { data: doc, error: docError } = await getSupabase()
     .from('documents')
     .insert({
       source_type: sourceType,
@@ -109,7 +109,7 @@ export async function ingest(input: IngestInput): Promise<IngestResult> {
     embedding: JSON.stringify(allEmbeddings[i]),
   }))
 
-  const { error: chunkError } = await supabase.from('chunks').insert(chunkRows)
+  const { error: chunkError } = await getSupabase().from('chunks').insert(chunkRows)
 
   if (chunkError) {
     console.error(`Failed to insert chunks for document ${doc.id}:`, chunkError.message)
