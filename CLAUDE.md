@@ -5,7 +5,52 @@
 
 Pantani is the knowledge layer of **Passo**, an autonomous programmatic media agency for Shopify DTC merchants in the UK. The name comes from Marco Pantani; "libro di corsa" is Italian for race book — the knowledge base agents consult when making decisions.
 
-Pantani is a RAG (Retrieval Augmented Generation) knowledge store. You feed it documents, emails, and URLs. It classifies, chunks, and embeds them. Agents like **Galibier** (strategy) and **Tourmalet** (narrative) query it to inform media decisions.
+Pantani is a RAG (Retrieval Augmented Generation) knowledge store. You feed it documents, emails, and URLs. It classifies, chunks, and embeds them. Specialist agents query it to inform media decisions.
+
+---
+
+## What Passo is
+
+Passo connects to a merchant's Shopify store, studies their business, builds a media strategy, executes that strategy across programmatic channels, and delivers a monthly narrative report — without requiring the merchant to understand programmatic advertising or manage campaigns.
+
+**Three core differentiators:**
+1. **New customer only** — Passo never retargets. Every impression targets people who have never bought from the merchant. New customer count, verified against Shopify order history, is the primary metric.
+2. **Shopify as single source of truth** — the merchant's store is the brief. All results are reconciled against actual Shopify revenue, not platform-reported ROAS figures (which systematically overcount via view-through attribution).
+3. **Transparent strategy** — before spending a pound, the merchant approves a complete strategy with projected ROAS range, format mix, and audience rationale. Every month a narrative report explains what happened and why.
+
+**Business model:** principal-based media buying. Passo buys inventory at cost and charges merchants a blended rate that includes the margin. As cross-merchant learning improves buying efficiency, costs fall at the same merchant-facing price — margin widens automatically.
+
+**Why now:** PubMatic launched AgenticOS in January 2026 — the first production implementation of agentic RTB accessible to small advertisers without a trading desk. This removes the primary technical barrier. Passo is built on top of it.
+
+---
+
+## The technology layer
+
+**AgenticOS (PubMatic)** — the programmatic execution layer. An implementation of the Agentic Real Time Framework (ARTF). Enables autonomous real-time bidding without a DSP relationship or trading desk.
+
+**AdCP (Ads Context Protocol)** — the buying standard Passo uses to purchase directly from premium publishers, bypassing open RTB exchanges where fraud, wastage, and brand safety failures are endemic.
+
+**Claude API (Sonnet)** — powers the intelligence layer: watching period analysis, strategy generation, and monthly narrative writing.
+
+**Cross-merchant learning layer** — every campaign outcome feeds a shared dataset of which publishers, formats, and audience signals drive verified new customer acquisition for which product categories at which spend levels. This is the structural moat.
+
+---
+
+## Agent architecture
+
+Internal agents are named after Alpine climbs. These names are internal only — no cycling language appears in merchant-facing communication.
+
+| Agent | Role |
+|---|---|
+| **Pantani** | Orchestration layer — coordinator, memory, reflection |
+| **Galibier** | Strategy — media planning, channel mix, budget allocation |
+| **Stelvio** | Execution — campaign management, bid optimisation |
+| **Mortirolo** | Anomaly detection — performance monitoring, alerting |
+| **Gavia** | Attribution — Shopify reconciliation, ROAS verification |
+| **Izoard** | Audience intelligence — targeting, signals, lookalikes |
+| **Tourmalet** | Narrative — monthly report writing, merchant communication |
+
+Galibier, Gavia, Izoard, and Tourmalet are the primary consumers of Pantani's knowledge store.
 
 ---
 
@@ -44,10 +89,11 @@ Every piece of knowledge follows the same path through `src/lib/ingest.ts`:
 |---|---|---|
 | File drop | `POST /api/ingest/file` | PDF, DOCX, TXT, MD up to 20MB. Multiple files queue sequentially in the UI. |
 | URL | `POST /api/ingest/url` | Fetches page, strips boilerplate with cheerio, follows redirects. Also handles PDF URLs. |
-| Email | `POST /api/ingest/email` | Webhook from Resend/Postmark. Ingests email body + follows all http/https links found in it. |
-| Gmail poll | `GET /api/poll-gmail` | Polls Gmail for emails labelled "Pantani", ingests them, moves to "Pantani-done". |
-| YouTube channel | `POST /api/ingest/youtube-channel` | Bulk-ingests transcripts from a channel (videos up to 1 year old) or a single video URL. Body: `{ "channel": "@handle, URL, or watch URL" }`. Processes sequentially. Skips videos already ingested (by `source_ref`). For large channels it will time out mid-run — re-submit to continue; dedup makes retries safe. |
-| YouTube poll | `GET /api/poll-youtube` | Ingests new videos published within `YOUTUBE_LOOKBACK_DAYS` (default 7) from all channels in `YOUTUBE_CHANNEL_IDS`. Intended for Vercel cron. |
+| Email | `POST /api/ingest/email` | Webhook from Resend. Ingests email body + follows all http/https links. Secret passed as `?key=` query param. |
+| YouTube channel | `POST /api/ingest/youtube-channel` | Bulk-ingests transcripts from a channel. Body: `{ "channel": "@handle or URL" }`. Skips already-ingested videos. |
+| YouTube poll | `GET /api/poll-youtube` | Ingests new videos within `YOUTUBE_LOOKBACK_DAYS` from channels in `YOUTUBE_CHANNEL_IDS`. For Vercel cron. |
+
+**Email routing:** `pantani@passo.ad` (Zoho alias) → forwarded to `pantani@in.passo.ad` → received by Resend → POSTed to `/api/ingest/email`.
 
 ---
 
@@ -74,9 +120,25 @@ Every piece of knowledge follows the same path through `src/lib/ingest.ts`:
 
 ## Tag vocabulary
 
-Fixed set — do not change without updating `src/lib/comprehend.ts` and telling agents:
+Full set — do not change without updating `src/lib/comprehend.ts` and informing agents:
 
-`competitive_intel`, `programmatic`, `cpm_benchmarks`, `attribution`, `audience`, `merchant_profile`, `category_knowledge`, `platform_intel`, `regulation`
+| Tag | What it covers |
+|---|---|
+| `competitive_intel` | Triple Whale, Criteo GO, AdRoll, Meta, Google — competitors and adjacent platforms |
+| `programmatic` | How programmatic buying works — DSPs, SSPs, RTB, inventory types, ad formats |
+| `cpm_benchmarks` | CPM pricing data, floor prices, rate cards, cost benchmarks by format/channel/vertical |
+| `attribution` | ROAS methodologies, last-click vs view-through, MTA, MMM, platform attribution models |
+| `audience` | Targeting, audience signals, lookalikes, intent scoring, contextual targeting |
+| `merchant_profile` | DTC merchant behaviour, psychology, paid media maturity, spend patterns |
+| `category_knowledge` | Vertical-specific knowledge — homeware, fashion, skincare, consumer goods |
+| `platform_intel` | PubMatic, AgenticOS, Meta Ads, Google Ads, specific platform mechanics |
+| `regulation` | GDPR, brand safety, IAB standards, consent, ISBA/ANA governance |
+| `adcp` | Ads Context Protocol — agentic direct buying from premium publishers outside open RTB |
+| `artf` | Agentic Real Time Framework — autonomous real-time programmatic execution by AI agents |
+| `agentic` | AI agents in media buying, autonomous campaign management, IAB Agent Registry |
+| `new_customer` | New customer acquisition, prospecting, new-to-brand targeting, incremental reach |
+| `incrementality` | Lift studies, causal attribution, verifying media spend drove sales vs organic |
+| `shopify` | Shopify platform specifics, revenue reconciliation, order data, merchant store structure |
 
 ---
 
@@ -90,12 +152,12 @@ Set in `.env.local` locally, and in Vercel project settings for production. All 
 | `SUPABASE_SERVICE_ROLE_KEY` | Service role key (not anon key) — has full DB access |
 | `VOYAGE_API_KEY` | Voyage AI key for embeddings |
 | `ANTHROPIC_API_KEY` | Anthropic key for Claude Haiku |
-| `INBOUND_EMAIL_SECRET` | Shared secret for webhook auth on `/api/ingest/email` |
-| `NEXT_PUBLIC_INBOUND_EMAIL` | Display email shown in UI (e.g. `pantani@passo.ad`) |
+| `INBOUND_EMAIL_SECRET` | Shared secret for webhook auth — passed as `?key=` in the Resend webhook URL |
+| `NEXT_PUBLIC_INBOUND_EMAIL` | Display email shown in UI (`pantani@passo.ad`) |
 | `YOUTUBE_API_KEY` | YouTube Data API v3 key (Google Cloud Console) |
-| `YOUTUBE_CHANNEL_IDS` | Comma-separated channels for `/api/poll-youtube` (handles, URLs, or UCxxx IDs) |
+| `YOUTUBE_CHANNEL_IDS` | Comma-separated channels for `/api/poll-youtube` |
 | `YOUTUBE_LOOKBACK_DAYS` | How far back the poll route looks for new videos (default `7`) |
-| `SUPADATA_API_KEY` | Supadata API key for YouTube transcript fetching (bypasses datacenter IP bot detection) |
+| `SUPADATA_API_KEY` | Supadata API key for YouTube transcript fetching (bypasses Vercel/AWS IP blocks) |
 
 ---
 
@@ -113,14 +175,8 @@ Set in `.env.local` locally, and in Vercel project settings for production. All 
 
 **Contextual retrieval** — each chunk is embedded as `context_prefix + chunk_text`, not just the raw chunk. This significantly improves retrieval accuracy for long documents where individual chunks lack context. The raw chunk is stored separately so agents receive clean text.
 
-**YouTube channel resolution in one API call** — `resolveChannel` in `src/lib/youtube.ts` fetches `id`, `snippet`, and `contentDetails` in a single `channels.list` call, returning both the channel title and uploads playlist ID together. This avoids the naive pattern of a second call to get the playlist ID.
+**Inbound email via Resend subdomain** — `in.passo.ad` has its own MX record pointing to Resend's inbound SMTP. This leaves the main `passo.ad` Zoho MX records untouched. The webhook secret is passed as `?key=` in the URL because Resend inbound does not support custom request headers.
 
-**YouTube dedup by `source_ref`** — YouTube videos are checked against `documents.source_ref` (the watch URL) before fetching any transcript. This is cheaper than the MD5 content hash check lower in the pipeline and avoids unnecessary Supadata API calls on re-polls.
+**YouTube transcript via Supadata** — Vercel runs in AWS datacenters; YouTube blocks transcript requests from those IPs. Supadata proxies the request transparently. Free tier is 100 credits/month — sufficient for ongoing polls but bulk channel imports of 100+ videos need a paid plan.
 
-**YouTube transcript via Supadata** — Vercel runs in AWS datacenters; YouTube returns `LOGIN_REQUIRED` to those IPs regardless of InnerTube client or headers. Supadata (`api.supadata.ai/v1/youtube/transcript`) proxies the request transparently. Falls back to parsing `ytInitialPlayerResponse` from the watch page HTML if `SUPADATA_API_KEY` is unset. Free tier is 100 credits/month (1 per transcript) — fine for ongoing polls, but a bulk channel import of 100+ videos will need a paid plan.
-
-**YouTube single-video title lookup** — when a watch URL is submitted (rather than a channel), the route calls `youtube.v3/videos?part=snippet` to get the real title and channel name before ingesting. Falls back to the videoId if the API call fails.
-
-**YouTube channel age cutoff** — `getChannelVideos` accepts a `publishedAfter` date and stops paginating once it hits older content (uploads playlist is newest-first). The channel route passes `oneYearAgo` so stale videos are never fetched.
-
-**Vercel cron for YouTube** — add to `vercel.json`: `{ "crons": [{ "path": "/api/poll-youtube", "schedule": "0 6 * * *" }] }`. The lookback window overlaps generously so occasional missed runs don't lose videos.
+**YouTube dedup by `source_ref`** — YouTube videos are checked against `documents.source_ref` (the watch URL) before fetching any transcript. Cheaper than the MD5 hash check and avoids unnecessary Supadata API calls on re-polls.

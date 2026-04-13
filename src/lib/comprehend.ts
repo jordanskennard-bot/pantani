@@ -16,6 +16,12 @@ export const KNOWLEDGE_TAGS = [
   'category_knowledge',  // homeware, fashion, skincare, specific verticals
   'platform_intel',      // PubMatic, Meta, Google specifics, AgenticOS
   'regulation',          // GDPR, brand safety, IAB standards, consent
+  'adcp',                // Ads Context Protocol — agentic ad buying standards and specs
+  'artf',                // Agentic Real Time Framework — real-time agentic media execution
+  'agentic',             // AI agents in media buying, autonomous campaign management
+  'new_customer',        // new customer acquisition, prospecting, new-to-brand measurement, incremental reach
+  'incrementality',      // lift studies, causal measurement, verified vs platform-reported ROAS, Shopify reconciliation
+  'shopify',             // Shopify platform specifics, revenue data, order reconciliation, merchant store structure
 ] as const
 
 export type KnowledgeTag = typeof KNOWLEDGE_TAGS[number]
@@ -37,28 +43,44 @@ export async function classifyDocument(text: string): Promise<DocumentComprehens
 
   const response = await getClient().messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 300,
+    max_tokens: 400,
     messages: [
       {
         role: 'user',
-        content: `You are classifying documents for Pantani — the knowledge and orchestration layer of Passo, an autonomous media agency for Shopify DTC merchants in the UK.
+        content: `You are classifying documents for Pantani — the knowledge and orchestration layer of Passo, an autonomous programmatic media agency for Shopify DTC merchants in the UK.
 
-Passo buys programmatic media (display, native, audio, CTV) for small merchants who currently only use Meta and Google. Pantani needs to understand competitive intelligence, programmatic methodology, CPM benchmarks, attribution approaches, audience signals, merchant behaviour, vertical-specific knowledge, and platform mechanics.
+Passo's model: it connects to a merchant's Shopify store, builds a media strategy, and autonomously executes programmatic media (display, native, audio, CTV) across premium publisher inventory — channels small merchants cannot normally access. It focuses exclusively on new customer acquisition, never retargeting. Shopify order data is the single source of truth for measuring success, not platform-reported ROAS figures.
 
-Classify this document:
+The technology: Passo uses PubMatic's AgenticOS (an implementation of the Agentic Real Time Framework, ARTF) to buy inventory autonomously without a trading desk. It buys through AdCP (Ads Context Protocol) — direct from premium publishers rather than open RTB exchanges. The intelligence layer runs on the Claude API.
+
+Classify this document and tag it using the vocabulary below. Choose all tags that apply.
 
 <document>
 ${truncated}
 </document>
 
+Tag definitions:
+- competitive_intel: research on Triple Whale, Criteo GO, AdRoll, Meta, Google, or other platforms competing with or adjacent to Passo
+- programmatic: how programmatic buying works — DSPs, SSPs, RTB mechanics, inventory types, ad formats, supply path
+- cpm_benchmarks: CPM pricing data, floor prices, rate cards, cost benchmarks by format, channel, or vertical
+- attribution: ROAS measurement methodologies, last-click vs view-through, MTA, MMM, platform attribution models
+- audience: targeting approaches, audience signals, lookalikes, intent scoring, contextual targeting
+- merchant_profile: DTC merchant behaviour, psychology, decision-making, paid media maturity, spend patterns
+- category_knowledge: vertical-specific knowledge — homeware, fashion, skincare, consumer goods, specific product categories
+- platform_intel: PubMatic, AgenticOS, Meta Ads, Google Ads, specific platform mechanics, publisher environments
+- regulation: GDPR, brand safety, IAB standards, consent frameworks, ISBA/ANA governance
+- adcp: Ads Context Protocol — the standard for agentic, direct programmatic buying from premium publishers outside open RTB
+- artf: Agentic Real Time Framework — the technical framework enabling autonomous real-time programmatic execution by AI agents
+- agentic: AI agents in media buying, autonomous campaign management, agent architecture, agent registries (IAB Tech Lab)
+- new_customer: new customer acquisition strategies, prospecting, new-to-brand targeting, incremental reach, upper-funnel buying
+- incrementality: lift studies, incrementality testing, causal attribution, verifying whether media spend actually drove sales vs organic
+- shopify: Shopify platform specifics, revenue reconciliation against order data, Shopify API, merchant store data structures
+
 Respond with JSON only, no explanation:
 {
   "summary": "2-3 sentences covering what this document is about and why it is relevant to Passo",
   "tags": ["tag1", "tag2"]
-}
-
-Available tags (choose all that apply):
-${KNOWLEDGE_TAGS.join(', ')}`,
+}`,
       },
     ],
   })

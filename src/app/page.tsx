@@ -31,6 +31,12 @@ const TAG_COLOURS: Record<string, string> = {
   category_knowledge: 'bg-orange-100 text-orange-700',
   platform_intel:     'bg-sky-100 text-sky-700',
   regulation:         'bg-stone-100 text-stone-600',
+  adcp:               'bg-violet-100 text-violet-700',
+  artf:               'bg-cyan-100 text-cyan-700',
+  agentic:            'bg-indigo-100 text-indigo-700',
+  new_customer:       'bg-lime-100 text-lime-700',
+  incrementality:     'bg-yellow-100 text-yellow-700',
+  shopify:            'bg-emerald-100 text-emerald-700',
 }
 
 const SOURCE_ICONS: Record<string, string> = {
@@ -128,7 +134,7 @@ export default function Home() {
       const data = await res.json()
       if (res.ok) {
         const label = data.channelTitle ?? 'Video'
-        const summary = `${label} — ${data.ingested} ingested, ${data.skipped} skipped, ${data.no_transcript} no transcript, ${data.error ?? 0} errors`
+        const summary = `${label}: ${data.ingested} ingested, ${data.skipped} skipped, ${data.no_transcript} no transcript, ${data.error ?? 0} errors`
         setYtStatus(data.ingested > 0 || data.skipped > 0 ? 'ok' : 'error')
         setYtMessage(summary)
         setYtResults(data.results ?? [])
@@ -222,6 +228,12 @@ export default function Home() {
 
         {/* Header */}
         <div className="mb-14">
+          <div className="flex items-center gap-2 mb-3">
+            <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style={{ width: 20, height: 20, flexShrink: 0 }}>
+              <path d="M4 22 L16 10 L28 22" stroke="#1a1a18" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span className="text-xs uppercase tracking-widest" style={{ color: '#9a9a8e', letterSpacing: '0.12em' }}>Passo</span>
+          </div>
           <h1 className="text-4xl font-medium tracking-tight" style={{ color: '#1a1a18', fontFamily: 'var(--font-serif)' }}>Pantani</h1>
           <p className="text-sm mt-2" style={{ color: '#6b6b63' }}>Libro di corsa</p>
         </div>
@@ -289,7 +301,7 @@ export default function Home() {
                          : r.status === 'skipped' ? '#9a9a8e'
                          : '#dc2626'
                   }}>
-                    {r.status === 'ingested' ? '✓' : r.status === 'skipped' ? '–' : '✕'}
+                    {r.status === 'ingested' ? '▸' : r.status === 'skipped' ? '·' : '×'}
                   </span>
                   <span className="truncate" title={r.error ?? r.title}>{r.title}</span>
                   {r.error && (
@@ -435,7 +447,7 @@ export default function Home() {
                       {doc.tags.map((tag) => (
                         <span
                           key={tag}
-                          className={`text-xs px-2 py-0.5 rounded-full ${TAG_COLOURS[tag] ?? 'bg-stone-100 text-stone-600'}`}
+                          className={`text-xs px-2 py-0.5 rounded ${TAG_COLOURS[tag] ?? 'bg-stone-100 text-stone-600'}`}
                         >
                           {tag.replace(/_/g, ' ')}
                         </span>

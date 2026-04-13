@@ -17,12 +17,16 @@ export const runtime = 'nodejs'
 // or as the X-Webhook-Secret header from your email provider.
 
 export async function POST(request: NextRequest) {
-  // Verify the webhook secret to prevent unauthorised ingestion
+  // Verify the webhook secret to prevent unauthorised ingestion.
+  // Accepts the secret as a Bearer token, X-Webhook-Secret header,
+  // or ?key= query parameter (needed for providers like Resend that
+  // don't support custom request headers on inbound webhooks).
   const secret = process.env.INBOUND_EMAIL_SECRET
   if (secret) {
     const authHeader = request.headers.get('authorization') ?? ''
     const secretHeader = request.headers.get('x-webhook-secret') ?? ''
-    const provided = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : secretHeader
+    const queryKey = new URL(request.url).searchParams.get('key') ?? ''
+    const provided = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : secretHeader || queryKey
 
     if (provided !== secret) {
       return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
