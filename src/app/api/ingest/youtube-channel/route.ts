@@ -20,10 +20,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'channel is required (URL, @handle, or channel ID)' }, { status: 400 })
   }
 
-  // Single video URL — ingest just that one video
+  // Single video URL — look up title then ingest
   const videoId = extractVideoId(channelInput)
   if (videoId) {
-    const result = await ingestVideo(videoId, videoId, 'unknown')
+    let title = videoId
+    let channelTitle = 'unknown'
+    try {
+      const metaRes = await fetch(
+        `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${process.env.YOUTUBE_API_KEY}`
+      )
+      if (metaRes.ok) {
+        const meta = await metaRes.json()
+        const snippet = meta?.items?.[0]?.snippet
+        if (snippet?.title) title = snippet.title
+        if (snippet?.channelTitle) channelTitle = snippet.channelTitle
+      }
+    } catch { /* fall back to videoId as title */ }
+    const result = await ingestVideo(videoId, title, channelTitle)
     return NextResponse.json({ total: 1, results: [result], ...countResults([result]) })
   }
 
