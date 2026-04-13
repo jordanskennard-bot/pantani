@@ -95,6 +95,7 @@ Set in `.env.local` locally, and in Vercel project settings for production. All 
 | `YOUTUBE_API_KEY` | YouTube Data API v3 key (Google Cloud Console) |
 | `YOUTUBE_CHANNEL_IDS` | Comma-separated channels for `/api/poll-youtube` (handles, URLs, or UCxxx IDs) |
 | `YOUTUBE_LOOKBACK_DAYS` | How far back the poll route looks for new videos (default `7`) |
+| `SUPADATA_API_KEY` | Supadata API key for YouTube transcript fetching (bypasses datacenter IP bot detection) |
 
 ---
 
