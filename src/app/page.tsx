@@ -54,6 +54,38 @@ const SOURCE_LABELS: Record<string, string> = {
 }
 
 export default function Home() {
+  const [question, setQuestion] = useState('')
+  const [askStatus, setAskStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+  const [answer, setAnswer] = useState('')
+  const [sources, setSources] = useState<Array<{ title: string; source_type: string; source_ref: string }>>([])
+
+  async function submitQuestion(e: React.FormEvent) {
+    e.preventDefault()
+    if (!question.trim()) return
+    setAskStatus('loading')
+    setAnswer('')
+    setSources([])
+    try {
+      const res = await fetch('/api/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setAnswer(data.answer)
+        setSources(data.sources ?? [])
+        setAskStatus('done')
+      } else {
+        setAnswer(data.error ?? 'Unknown error')
+        setAskStatus('error')
+      }
+    } catch {
+      setAnswer('Network error')
+      setAskStatus('error')
+    }
+  }
+
   const [url, setUrl] = useState('')
   const [urlStatus, setUrlStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
   const [urlMessage, setUrlMessage] = useState('')
@@ -255,6 +287,68 @@ export default function Home() {
           <h1 className="text-4xl font-medium tracking-tight" style={{ color: '#1a1a18', fontFamily: 'var(--font-serif)' }}>Pantani</h1>
           <p className="text-sm mt-2" style={{ color: '#6b6b63' }}>Libro di corsa</p>
         </div>
+
+        {/* Ask Pantani */}
+        <section className="mb-14">
+          <h2 className="text-xs uppercase tracking-widest mb-3" style={{ color: '#9a9a8e', letterSpacing: '0.12em' }}>Chiedi</h2>
+          <form onSubmit={submitQuestion} className="flex gap-2">
+            <input
+              type="text"
+              value={question}
+              onChange={e => setQuestion(e.target.value)}
+              placeholder="Ask Pantani anything..."
+              className="flex-1 rounded px-3 py-2 text-sm focus:outline-none"
+              style={{ background: '#eceae4', border: '1px solid #d8d6ce', color: '#1a1a18' }}
+            />
+            <button
+              type="submit"
+              disabled={askStatus === 'loading'}
+              className="text-sm px-4 py-2 rounded transition-colors disabled:opacity-40"
+              style={{ background: '#1a1a18', color: '#f5f4f0' }}
+            >
+              {askStatus === 'loading' ? '...' : 'Ask'}
+            </button>
+          </form>
+
+          {(answer || askStatus === 'loading') && (
+            <div className="mt-4 rounded-lg px-5 py-4" style={{ background: '#eceae4', border: '1px solid #d8d6ce' }}>
+              {askStatus === 'loading' ? (
+                <p className="text-sm" style={{ color: '#9a9a8e' }}>Thinking...</p>
+              ) : (
+                <>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: askStatus === 'error' ? '#dc2626' : '#1a1a18' }}>
+                    {answer}
+                  </p>
+                  {sources.length > 0 && (
+                    <div className="mt-4 pt-3" style={{ borderTop: '1px solid #d8d6ce' }}>
+                      <p className="text-xs mb-2" style={{ color: '#9a9a8e' }}>Sources</p>
+                      <ul className="space-y-1">
+                        {sources.map((s, i) => (
+                          <li key={i} className="flex items-center gap-2 text-xs" style={{ color: '#6b6b63' }}>
+                            <span style={{ color: '#9a9a8e' }}>{SOURCE_ICONS[s.source_type] ?? '▣'}</span>
+                            {s.source_ref && (s.source_type === 'url' || s.source_type === 'youtube') ? (
+                              <a
+                                href={s.source_ref}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="truncate hover:underline"
+                                style={{ color: '#4a4a42' }}
+                              >
+                                {s.title}
+                              </a>
+                            ) : (
+                              <span className="truncate">{s.title}</span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </section>
 
         {/* URL intake */}
         <section className="mb-8">
