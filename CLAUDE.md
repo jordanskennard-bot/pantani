@@ -61,10 +61,12 @@ Galibier, Gavia, Izoard, and Tourmalet are the primary consumers of Pantani's kn
 | Framework | Next.js App Router, Node.js runtime |
 | Database | Supabase (Postgres + pgvector) |
 | Embeddings | Voyage AI `voyage-3-lite` (512 dimensions) — direct fetch, no SDK |
-| Comprehension | Anthropic Claude `claude-haiku-4-5-20251001` — via `@anthropic-ai/sdk` |
+| Ingest comprehension | Anthropic Claude `claude-haiku-4-5-20251001` — classify, summarise, chunk context |
+| Ask synthesis | Anthropic Claude `claude-sonnet-4-5` — retrieval synthesis, supplements KB with own knowledge |
 | PDF extraction | `unpdf` (not pdf-parse — broken in Next.js) |
 | DOCX extraction | `mammoth` |
 | HTML scraping | `cheerio` |
+| Inbound email | Postmark — receives forwarded emails, POSTs parsed JSON to `/api/ingest/email` |
 | Deployment | Vercel — live at `pantani.passo.ad` |
 
 ---
@@ -89,11 +91,13 @@ Every piece of knowledge follows the same path through `src/lib/ingest.ts`:
 |---|---|---|
 | File drop | `POST /api/ingest/file` | PDF, DOCX, TXT, MD up to 20MB. Multiple files queue sequentially in the UI. |
 | URL | `POST /api/ingest/url` | Fetches page, strips boilerplate with cheerio, follows redirects. Also handles PDF URLs. |
-| Email | `POST /api/ingest/email` | Webhook from Resend. Ingests email body + follows all http/https links. Secret passed as `?key=` query param. |
+| Email | `POST /api/ingest/email` | Webhook from Postmark. Ingests email body, follows all http/https links found in body, and extracts any PDF/DOCX/TXT/MD attachments. Secret passed as `?key=` query param. |
 | YouTube channel | `POST /api/ingest/youtube-channel` | Bulk-ingests transcripts from a channel. Body: `{ "channel": "@handle or URL" }`. Skips already-ingested videos. |
 | YouTube poll | `GET /api/poll-youtube` | Ingests new videos within `YOUTUBE_LOOKBACK_DAYS` from channels in `YOUTUBE_CHANNEL_IDS`. For Vercel cron. |
 
-**Email routing:** `pantani@passo.ad` (Zoho alias) → forwarded to `pantani@in.passo.ad` → received by Resend → POSTed to `/api/ingest/email`.
+**Email routing:** any email address (Gmail, Zoho, etc.) → forwarded to Postmark inbound address → Postmark POSTs parsed JSON to `https://pantani.passo.ad/api/ingest/email?key=INBOUND_EMAIL_SECRET`.
+
+**Postmark inbound format:** `From`, `Subject`, `TextBody`, `HtmlBody`, `Attachments[]` (base64 encoded). The route normalises across Postmark and generic formats.
 
 ---
 
