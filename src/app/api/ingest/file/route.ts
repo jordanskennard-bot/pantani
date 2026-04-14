@@ -3,6 +3,7 @@ import { ingest } from '@/lib/ingest'
 import { extractPdf, extractDocx, extractPlainText } from '@/lib/extract'
 
 export const runtime = 'nodejs'
+export const maxDuration = 300
 
 const MAX_FILE_BYTES = 20 * 1024 * 1024 // 20 MB
 

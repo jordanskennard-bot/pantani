@@ -3,6 +3,7 @@ import { ingest } from '@/lib/ingest'
 import { extractUrl } from '@/lib/extract'
 
 export const runtime = 'nodejs'
+export const maxDuration = 300
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null)

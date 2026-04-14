@@ -112,7 +112,7 @@ export async function ingest(input: IngestInput): Promise<IngestResult> {
   const { error: chunkError } = await getSupabase().from('chunks').insert(chunkRows)
 
   if (chunkError) {
-    console.error(`Failed to insert chunks for document ${doc.id}:`, chunkError.message)
+    throw new Error(`Failed to insert chunks: ${chunkError.message}`)
   }
 
   return {

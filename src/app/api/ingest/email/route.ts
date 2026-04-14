@@ -10,6 +10,7 @@ function extractUrls(text: string): string[] {
 }
 
 export const runtime = 'nodejs'
+export const maxDuration = 300
 
 // This endpoint receives inbound email webhooks.
 // Compatible with Resend (inbound), Postmark, and Cloudflare Email Workers.
