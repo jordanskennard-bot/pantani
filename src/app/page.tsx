@@ -491,9 +491,6 @@ export default function Home() {
           <div className="mt-3 rounded px-3 py-2 text-sm font-mono" style={{ background: '#f5f4f0', color: '#4a4a42' }}>
             {process.env.NEXT_PUBLIC_INBOUND_EMAIL ?? 'pantani@your-domain.com'}
           </div>
-          <p className="text-xs mt-2" style={{ color: '#9a9a8e' }}>
-            Configure your inbound email webhook to POST to <code>/api/ingest/email</code>
-          </p>
         </section>
 
         {/* Document list */}

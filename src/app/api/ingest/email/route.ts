@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ingest } from '@/lib/ingest'
-import { extractUrl } from '@/lib/extract'
+import { extractUrl, extractPdf, extractDocx, extractPlainText } from '@/lib/extract'
 
 // Extract all http/https URLs from a block of text
 function extractUrls(text: string): string[] {
@@ -48,6 +48,9 @@ export async function POST(request: NextRequest) {
     body.text ?? body.TextBody ?? body.plain ?? body.body ?? ''
   const htmlBody: string =
     body.html ?? body.HtmlBody ?? body.html_body ?? ''
+  // Postmark: Attachments array. Each item has Name, Content (base64), ContentType.
+  const attachments: { Name: string; Content: string; ContentType: string }[] =
+    body.Attachments ?? body.attachments ?? []
 
   // Prefer plain text; fall back to stripping HTML tags
   let text = textBody.trim()
@@ -94,10 +97,40 @@ export async function POST(request: NextRequest) {
     const ingestedUrls = urlResults
       .map((r, i) => ({ url: urls[i], ok: r.status === 'fulfilled' }))
 
+    // Ingest any attachments (PDF, DOCX, TXT, MD)
+    const attachmentResults = await Promise.allSettled(
+      attachments.map(async (att) => {
+        const ext = att.Name.split('.').pop()?.toLowerCase() ?? ''
+        const buffer = Buffer.from(att.Content, 'base64')
+        let text: string
+        if (ext === 'pdf') {
+          text = await extractPdf(buffer)
+        } else if (ext === 'docx') {
+          text = await extractDocx(buffer)
+        } else if (['txt', 'md', 'markdown', 'csv'].includes(ext)) {
+          text = extractPlainText(buffer)
+        } else {
+          throw new Error(`Unsupported attachment type: .${ext}`)
+        }
+        if (!text.trim()) throw new Error('No text extracted from attachment')
+        return ingest({
+          sourceType: 'file',
+          sourceRef: att.Name,
+          title: att.Name.replace(/\.[^.]+$/, ''),
+          text,
+          metadata: { mimeType: att.ContentType, ingestedViaEmail: subject },
+        })
+      })
+    )
+
+    const ingestedAttachments = attachmentResults
+      .map((r, i) => ({ name: attachments[i].Name, ok: r.status === 'fulfilled' }))
+
     return NextResponse.json({
       success: true,
       email: emailResult,
       links: ingestedUrls,
+      attachments: ingestedAttachments,
     })
   } catch (err) {
     console.error('Email ingest error:', err)
