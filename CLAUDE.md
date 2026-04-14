@@ -180,7 +180,9 @@ Set in `.env.local` locally, and in Vercel project settings for production. All 
 
 **Contextual retrieval** — each chunk is embedded as `context_prefix + chunk_text`, not just the raw chunk. This significantly improves retrieval accuracy for long documents where individual chunks lack context. The raw chunk is stored separately so agents receive clean text.
 
-**Inbound email via Resend subdomain** — `in.passo.ad` has its own MX record pointing to Resend's inbound SMTP. This leaves the main `passo.ad` Zoho MX records untouched. The webhook secret is passed as `?key=` in the URL because Resend inbound does not support custom request headers.
+**Inbound email via Postmark** — Postmark provides a dedicated inbound address (`hash@inbound.postmarkapp.com`). Any email forwarded to that address is parsed and POSTed as JSON to `/api/ingest/email`. No MX record setup required — you just forward to Postmark's existing address. The webhook secret is passed as `?key=` in the URL.
+
+**Ask uses Sonnet and supplements the knowledge base** — the Ask route (`/api/ask`) retrieves the top 15 chunks plus document-level key_insights, then passes everything to Claude Sonnet. Sonnet is instructed to lead with knowledge base content and fill gaps with its own training knowledge. It labels the source so callers can tell the difference. This means Pantani gives complete answers even on topics not yet in the knowledge base.
 
 **YouTube transcript via Supadata** — Vercel runs in AWS datacenters; YouTube blocks transcript requests from those IPs. Supadata proxies the request transparently. Free tier is 100 credits/month — sufficient for ongoing polls but bulk channel imports of 100+ videos need a paid plan.
 
