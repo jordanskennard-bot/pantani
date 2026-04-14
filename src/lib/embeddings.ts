@@ -1,6 +1,6 @@
 const VOYAGE_API_URL = 'https://api.voyageai.com/v1/embeddings'
 const EMBEDDING_MODEL = 'voyage-3-lite'
-const EMBEDDING_DIM = 1024
+const EMBEDDING_DIM = 512
 
 type VoyageResponse = {
   data: { embedding: number[]; index: number }[]

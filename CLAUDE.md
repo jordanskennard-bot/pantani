@@ -60,7 +60,7 @@ Galibier, Gavia, Izoard, and Tourmalet are the primary consumers of Pantani's kn
 |---|---|
 | Framework | Next.js App Router, Node.js runtime |
 | Database | Supabase (Postgres + pgvector) |
-| Embeddings | Voyage AI `voyage-3-lite` (1024 dimensions) — direct fetch, no SDK |
+| Embeddings | Voyage AI `voyage-3-lite` (512 dimensions) — direct fetch, no SDK |
 | Comprehension | Anthropic Claude `claude-haiku-4-5-20251001` — via `@anthropic-ai/sdk` |
 | PDF extraction | `unpdf` (not pdf-parse — broken in Next.js) |
 | DOCX extraction | `mammoth` |
