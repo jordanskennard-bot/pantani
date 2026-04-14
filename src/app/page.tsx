@@ -119,30 +119,48 @@ export default function Home() {
     }
   }
 
+  async function runYouTubeIngest(channel: string, accumulated: typeof ytResults) {
+    const res = await fetch('/api/ingest/youtube-channel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channel }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      setYtStatus('error')
+      setYtMessage(data.error ?? 'Unknown error')
+      return
+    }
+
+    const allResults = [...accumulated, ...(data.results ?? [])]
+    const totals = allResults.reduce(
+      (acc, r) => { acc[r.status as keyof typeof acc] = (acc[r.status as keyof typeof acc] ?? 0) + 1; return acc },
+      { ingested: 0, skipped: 0, no_transcript: 0, error: 0 },
+    )
+    const label = data.channelTitle ?? 'Video'
+    setYtResults(allResults)
+    if (totals.ingested > 0) fetchDocs()
+
+    if (data.hasMore) {
+      setYtMessage(`${label}: ${totals.ingested} ingested so far — continuing...`)
+      setYtStatus('loading')
+      await new Promise(r => setTimeout(r, 3_000))
+      await runYouTubeIngest(channel, allResults)
+    } else {
+      setYtMessage(`${label}: ${totals.ingested} ingested, ${totals.skipped} skipped, ${totals.no_transcript} no transcript, ${totals.error} errors`)
+      setYtStatus(totals.ingested > 0 || totals.skipped > 0 ? 'ok' : 'error')
+      if (totals.ingested > 0) setYtChannel('')
+    }
+  }
+
   async function submitYouTubeChannel(e: React.FormEvent) {
     e.preventDefault()
     if (!ytChannel.trim()) return
     setYtStatus('loading')
-    setYtMessage('')
+    setYtMessage('Starting...')
     setYtResults([])
     try {
-      const res = await fetch('/api/ingest/youtube-channel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channel: ytChannel }),
-      })
-      const data = await res.json()
-      if (res.ok) {
-        const label = data.channelTitle ?? 'Video'
-        const summary = `${label}: ${data.ingested} ingested, ${data.skipped} skipped, ${data.no_transcript} no transcript, ${data.error ?? 0} errors`
-        setYtStatus(data.ingested > 0 || data.skipped > 0 ? 'ok' : 'error')
-        setYtMessage(summary)
-        setYtResults(data.results ?? [])
-        if (data.ingested > 0) { setYtChannel(''); fetchDocs() }
-      } else {
-        setYtStatus('error')
-        setYtMessage(data.error ?? 'Unknown error')
-      }
+      await runYouTubeIngest(ytChannel.trim(), [])
     } catch {
       setYtStatus('error')
       setYtMessage('Network error')

@@ -65,14 +65,26 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  const TIME_BUDGET_MS = 240_000 // stop at 4 min, well inside Vercel's 5-min limit
+  const startTime = Date.now()
+
   const results = []
   for (const { videoId, title } of videos) {
+    if (Date.now() - startTime > TIME_BUDGET_MS) {
+      // Return early — client will resubmit and dedup will skip what's already done
+      return NextResponse.json({
+        channelId, channelTitle,
+        total: videos.length,
+        ...countResults(results),
+        results,
+        hasMore: true,
+      })
+    }
     results.push(await ingestVideo(videoId, title, channelTitle))
-    // Pause between videos to avoid YouTube rate-limiting the fallback page fetch
     await new Promise(r => setTimeout(r, 2_000))
   }
 
-  return NextResponse.json({ channelId, channelTitle, total: videos.length, ...countResults(results), results })
+  return NextResponse.json({ channelId, channelTitle, total: videos.length, ...countResults(results), results, hasMore: false })
 }
 
 function countResults(results: { status: string }[]) {
