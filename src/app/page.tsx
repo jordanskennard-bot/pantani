@@ -230,6 +230,9 @@ export default function Home() {
           ? { ...i, status: 'error', message: 'Network error' }
           : i))
       }
+
+      // Pause between documents to avoid hitting Haiku rate limits (50 RPM)
+      await new Promise(r => setTimeout(r, 3000))
     }
 
     processingRef.current = false
