@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     .join('\n\n---\n\n')
 
   const response = await getClient().messages.create({
-    model: 'claude-sonnet-4-5-20251001',
+    model: 'claude-sonnet-4-5',
     max_tokens: 2048,
     messages: [
       {
