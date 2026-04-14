@@ -156,8 +156,8 @@ Set in `.env.local` locally, and in Vercel project settings for production. All 
 | `SUPABASE_URL` | Project URL from Supabase settings |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service role key (not anon key) — has full DB access |
 | `VOYAGE_API_KEY` | Voyage AI key for embeddings |
-| `ANTHROPIC_API_KEY` | Anthropic key for Claude Haiku |
-| `INBOUND_EMAIL_SECRET` | Shared secret for webhook auth — passed as `?key=` in the Resend webhook URL |
+| `ANTHROPIC_API_KEY` | Anthropic key — used by Haiku (ingest) and Sonnet (ask) |
+| `INBOUND_EMAIL_SECRET` | Shared secret for webhook auth — passed as `?key=` in the Postmark inbound webhook URL |
 | `NEXT_PUBLIC_INBOUND_EMAIL` | Display email shown in UI (`pantani@passo.ad`) |
 | `YOUTUBE_API_KEY` | YouTube Data API v3 key (Google Cloud Console) |
 | `YOUTUBE_CHANNEL_IDS` | Comma-separated channels for `/api/poll-youtube` |
