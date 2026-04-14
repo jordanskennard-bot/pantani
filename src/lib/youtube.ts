@@ -143,15 +143,21 @@ async function fetchTranscript(videoId: string): Promise<string> {
   // 2. Fallback: parse ytInitialPlayerResponse from the watch page HTML
   //    YouTube embeds the full player data as a JS variable in the page.
   //    Use bracket-depth tracking to extract the JSON reliably.
-  const pageRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept-Language': 'en-US,en;q=0.9',
-      'Cookie': 'CONSENT=YES+42; SOCS=CAI',
-    },
-    signal: AbortSignal.timeout(15_000),
-  })
-  if (!pageRes.ok) throw new Error(`YouTube page fetch failed: ${pageRes.status}`)
+  //    Retry up to 3 times with backoff on 429 rate-limit responses.
+  let pageRes: Response | null = null
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    pageRes = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Cookie': 'CONSENT=YES+42; SOCS=CAI',
+      },
+      signal: AbortSignal.timeout(15_000),
+    })
+    if (pageRes.status !== 429) break
+    if (attempt < 3) await new Promise(r => setTimeout(r, attempt * 10_000))
+  }
+  if (!pageRes || !pageRes.ok) throw new Error(`YouTube page fetch failed: ${pageRes?.status ?? 'no response'}`)
   const html = await pageRes.text()
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

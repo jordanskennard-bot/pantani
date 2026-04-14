@@ -68,6 +68,8 @@ export async function POST(request: NextRequest) {
   const results = []
   for (const { videoId, title } of videos) {
     results.push(await ingestVideo(videoId, title, channelTitle))
+    // Pause between videos to avoid YouTube rate-limiting the fallback page fetch
+    await new Promise(r => setTimeout(r, 2_000))
   }
 
   return NextResponse.json({ channelId, channelTitle, total: videos.length, ...countResults(results), results })
