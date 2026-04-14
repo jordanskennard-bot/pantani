@@ -182,7 +182,9 @@ Set in `.env.local` locally, and in Vercel project settings for production. All 
 
 **Inbound email via Postmark** — Postmark provides a dedicated inbound address (`hash@inbound.postmarkapp.com`). Any email forwarded to that address is parsed and POSTed as JSON to `/api/ingest/email`. No MX record setup required — you just forward to Postmark's existing address. The webhook secret is passed as `?key=` in the URL.
 
-**Ask uses Sonnet and supplements the knowledge base** — the Ask route (`/api/ask`) retrieves the top 15 chunks plus document-level key_insights, then passes everything to Claude Sonnet. Sonnet is instructed to lead with knowledge base content and fill gaps with its own training knowledge. It labels the source so callers can tell the difference. This means Pantani gives complete answers even on topics not yet in the knowledge base.
+**Ask uses hybrid search** — the Ask route (`/api/ask`) combines two retrieval passes: (1) vector similarity search for the top 15 semantically relevant chunks, and (2) keyword search on document titles and summaries for any words in the question longer than 3 characters. This ensures named entities (companies, platforms, products) are never missed due to semantic distance. Results are merged, vector hits first.
+
+**Ask uses Sonnet and supplements the knowledge base** — after retrieval, everything goes to Claude Sonnet with document-level key_insights alongside the chunk passages. Sonnet leads with knowledge base content and fills gaps with its own training knowledge, labelling the source so callers can distinguish Passo-curated knowledge from general industry knowledge.
 
 **YouTube transcript via Supadata** — Vercel runs in AWS datacenters; YouTube blocks transcript requests from those IPs. Supadata proxies the request transparently. Free tier is 100 credits/month — sufficient for ongoing polls but bulk channel imports of 100+ videos need a paid plan.
 

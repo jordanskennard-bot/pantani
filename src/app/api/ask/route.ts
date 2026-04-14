@@ -39,8 +39,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to embed question' }, { status: 500 })
   }
 
-  // Retrieve top chunks
-  const { data: chunks, error } = await getSupabase().rpc('search_knowledge', {
+  // 1. Vector search — semantic similarity
+  const { data: vectorChunks, error } = await getSupabase().rpc('search_knowledge', {
     query_embedding: JSON.stringify(embedding),
     match_count: 15,
     filter_source_type: null,
@@ -51,7 +51,75 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  if (!chunks || chunks.length === 0) {
+  // 2. Keyword search — find documents whose title or summary contains words from the question
+  // This catches named entities (companies, platforms, products) that vector search can miss
+  const keywords = question
+    .split(/\s+/)
+    .map(w => w.replace(/[^a-zA-Z0-9]/g, ''))
+    .filter(w => w.length > 3)
+
+  let keywordChunks: Chunk[] = []
+  if (keywords.length > 0) {
+    const vectorDocIds = new Set((vectorChunks ?? []).map((c: Chunk) => c.document_id))
+
+    // Search for documents matching any keyword in title or summary
+    const keywordMatches = await Promise.all(
+      keywords.map(kw =>
+        getSupabase()
+          .from('documents')
+          .select('id, source_type, source_ref, title, summary, key_insights, tags')
+          .or(`title.ilike.%${kw}%,summary.ilike.%${kw}%`)
+          .limit(3)
+      )
+    )
+
+    const matchedDocIds = [
+      ...new Set(
+        keywordMatches
+          .flatMap(r => r.data ?? [])
+          .filter(d => !vectorDocIds.has(d.id))
+          .map(d => d.id)
+      ),
+    ]
+
+    if (matchedDocIds.length > 0) {
+      // Fetch top 3 chunks per matched document
+      const { data: extra } = await getSupabase()
+        .from('chunks')
+        .select(`
+          id,
+          document_id,
+          content,
+          context_prefix,
+          chunk_index,
+          documents!inner(source_type, source_ref, title, summary, key_insights, tags)
+        `)
+        .in('document_id', matchedDocIds)
+        .order('chunk_index')
+        .limit(matchedDocIds.length * 3)
+
+      if (extra) {
+        keywordChunks = extra.map((c: any) => ({
+          chunk_id: c.id,
+          document_id: c.document_id,
+          source_type: c.documents.source_type,
+          source_ref: c.documents.source_ref,
+          title: c.documents.title,
+          summary: c.documents.summary,
+          key_insights: c.documents.key_insights ?? [],
+          tags: c.documents.tags ?? [],
+          content: c.content,
+          context_prefix: c.context_prefix,
+          similarity: 0,
+        }))
+      }
+    }
+  }
+
+  // Merge — vector results first, keyword results appended
+  const chunks: Chunk[] = [...(vectorChunks ?? []), ...keywordChunks]
+
+  if (chunks.length === 0) {
     return NextResponse.json({
       answer: 'No relevant knowledge found. Try ingesting some documents first.',
       sources: [],
