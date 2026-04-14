@@ -74,10 +74,10 @@ Galibier, Gavia, Izoard, and Tourmalet are the primary consumers of Pantani's kn
 Every piece of knowledge follows the same path through `src/lib/ingest.ts`:
 
 1. **Duplicate check** — MD5 hash of raw text, checked against `documents.content_hash`. Returns immediately if already stored. No API calls wasted.
-2. **Classify** — one Claude Haiku call: produces a 2-3 sentence summary and tags from the fixed vocabulary.
-3. **Store document** — inserts into `documents` table with summary, tags, content_hash, raw_text.
+2. **Classify** — one Claude Haiku call: produces a summary, 3-8 key_insights (specific facts/stats extracted from the document), and tags from the fixed vocabulary.
+3. **Store document** — inserts into `documents` table with summary, key_insights, tags, content_hash, raw_text.
 4. **Chunk** — splits text into ~500-token overlapping chunks (`src/lib/chunk.ts`).
-5. **Contextualise** — one Claude Haiku call for the whole document: generates a one-sentence context prefix per chunk situating it within the document (Anthropic contextual retrieval technique).
+5. **Contextualise** — one Claude Haiku call for the whole document: generates an insight-focused prefix per chunk identifying the key fact or claim in that chunk (not just its location). Embedded with the chunk to improve retrieval of specific data points.
 6. **Embed** — Voyage AI embeds `context_prefix + chunk` text. Batched at 64 with 20s delay between batches (free tier is 3 RPM).
 7. **Store chunks** — inserts into `chunks` table with content, context_prefix, and embedding vector.
 
@@ -104,6 +104,7 @@ Every piece of knowledge follows the same path through `src/lib/ingest.ts`:
 - `raw_text` — full extracted text
 - `token_count` — rough estimate (chars / 4)
 - `summary` — Claude's 2-3 sentence classification
+- `key_insights` — text[] of 3-8 specific facts, stats, and claims extracted at ingest
 - `tags` — text[] from fixed vocabulary (GIN indexed)
 - `content_hash` — md5(raw_text), unique constraint prevents duplicates
 - `metadata` — jsonb for file size, mime type, domain etc.
@@ -111,10 +112,10 @@ Every piece of knowledge follows the same path through `src/lib/ingest.ts`:
 **`chunks`** — many rows per document
 - `document_id` → documents(id) on delete cascade
 - `chunk_index`, `content` — raw chunk text
-- `context_prefix` — Claude's situating sentence for this chunk
-- `embedding` — vector(1024), IVFFlat indexed for cosine similarity search
+- `context_prefix` — Claude's insight-focused prefix: the key fact or claim in this chunk
+- `embedding` — vector(512), IVFFlat indexed for cosine similarity search
 
-**`search_knowledge()`** — RPC function for vector search, supports filtering by `source_type` and `tags[]`.
+**`search_knowledge()`** — RPC function for vector search, supports filtering by `source_type` and `tags[]`. Returns document-level `key_insights` alongside each chunk so the Ask route can present both extracted insights and specific passages to Claude Sonnet for synthesis.
 
 ---
 

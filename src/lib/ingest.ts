@@ -64,6 +64,7 @@ export async function ingest(input: IngestInput): Promise<IngestResult> {
       token_count: Math.round(text.length / 4),
       metadata,
       summary: comprehension.summary,
+      key_insights: comprehension.key_insights,
       tags: comprehension.tags,
       content_hash: contentHash,
     })

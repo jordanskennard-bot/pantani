@@ -28,6 +28,7 @@ export type KnowledgeTag = typeof KNOWLEDGE_TAGS[number]
 
 export type DocumentComprehension = {
   summary: string
+  key_insights: string[]
   tags: KnowledgeTag[]
 }
 
@@ -36,14 +37,14 @@ export type ChunkContext = {
   contextPrefix: string
 }
 
-// Step 1 — Classify the document: summary + tags
+// Step 1 — Classify the document: summary + key_insights + tags
 // One Claude call per document, regardless of length.
 export async function classifyDocument(text: string): Promise<DocumentComprehension> {
   const truncated = text.slice(0, 12_000) // stay well within context for classification
 
   const response = await getClient().messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 400,
+    max_tokens: 800,
     messages: [
       {
         role: 'user',
@@ -53,7 +54,7 @@ Passo's model: it connects to a merchant's Shopify store, builds a media strateg
 
 The technology: Passo uses PubMatic's AgenticOS (an implementation of the Agentic Real Time Framework, ARTF) to buy inventory autonomously without a trading desk. It buys through AdCP (Ads Context Protocol) — direct from premium publishers rather than open RTB exchanges. The intelligence layer runs on the Claude API.
 
-Classify this document and tag it using the vocabulary below. Choose all tags that apply.
+Classify this document. Extract the key facts and insights that Passo's agents (Galibier for strategy, Gavia for attribution, Izoard for audience, Stelvio for execution) would find decision-relevant.
 
 <document>
 ${truncated}
@@ -79,8 +80,14 @@ Tag definitions:
 Respond with JSON only, no explanation:
 {
   "summary": "2-3 sentences covering what this document is about and why it is relevant to Passo",
+  "key_insights": [
+    "Specific fact, statistic, claim, or decision-relevant finding — include numbers, names, dates where present",
+    "..."
+  ],
   "tags": ["tag1", "tag2"]
-}`,
+}
+
+key_insights rules: 3-8 items. Each must be a complete, standalone statement. Prioritise specific data points (CPM figures, percentages, platform names, dates) over general observations. If the document contains no specific facts, summarise the 3-5 most actionable points.`,
       },
     ],
   })
@@ -94,14 +101,16 @@ Respond with JSON only, no explanation:
     ) as KnowledgeTag[]
     return {
       summary: parsed.summary ?? '',
+      key_insights: Array.isArray(parsed.key_insights) ? parsed.key_insights.filter(Boolean) : [],
       tags,
     }
   } catch {
-    return { summary: '', tags: [] }
+    return { summary: '', key_insights: [], tags: [] }
   }
 }
 
-// Step 2 — Generate context prefixes for all chunks.
+// Step 2 — Generate insight-focused context prefixes for all chunks.
+// Each prefix names the key fact or claim in the chunk, not just its location.
 // Batches into groups of 50 to stay within safe token limits.
 // Returns one context sentence per chunk, in order.
 export async function generateChunkContexts(
@@ -131,12 +140,12 @@ export async function generateChunkContexts(
 ${truncatedDoc}
 </document>
 
-For each chunk below, write one sentence (max 120 characters) that situates the chunk within the document — what subject it covers and where it fits. Be specific. Do not summarise, just contextualise.
+For each chunk below, write one sentence (max 150 characters) identifying the most important fact, claim, statistic, or data point in that chunk. Include specific numbers, names, platform names, or dates if present. If the chunk contains no specific notable claim, describe its primary subject concisely.
 
 ${chunkList}
 
 Respond with a JSON array of strings, one per chunk, in order:
-["context for chunk 1", "context for chunk 2", ...]`,
+["key insight for chunk 1", "key insight for chunk 2", ...]`,
         },
       ],
     })
