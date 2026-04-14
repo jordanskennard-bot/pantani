@@ -10,7 +10,7 @@ export async function GET() {
     .from('documents')
     .select('id, created_at, source_type, source_ref, source_from, title, token_count, summary, tags, metadata')
     .order('created_at', { ascending: false })
-    .limit(100)
+    .limit(500)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
