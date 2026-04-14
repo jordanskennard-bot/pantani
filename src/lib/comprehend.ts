@@ -101,8 +101,8 @@ Respond with JSON only, no explanation:
   }
 }
 
-// Step 2 — Generate context prefixes for all chunks in one call.
-// Sends the full document once, asks Claude to situate each chunk within it.
+// Step 2 — Generate context prefixes for all chunks.
+// Batches into groups of 50 to stay within safe token limits.
 // Returns one context sentence per chunk, in order.
 export async function generateChunkContexts(
   documentText: string,
@@ -111,17 +111,22 @@ export async function generateChunkContexts(
   if (chunks.length === 0) return []
 
   const truncatedDoc = documentText.slice(0, 10_000)
-  const chunkList = chunks
-    .map((c, i) => `Chunk ${i + 1}:\n${c.slice(0, 400)}`)
-    .join('\n\n')
+  const BATCH_SIZE = 50
+  const allContexts: string[] = []
 
-  const response = await getClient().messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: chunks.length * 60, // ~60 tokens per context sentence
-    messages: [
-      {
-        role: 'user',
-        content: `Here is a document:
+  for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
+    const batch = chunks.slice(i, i + BATCH_SIZE)
+    const chunkList = batch
+      .map((c, j) => `Chunk ${i + j + 1}:\n${c.slice(0, 400)}`)
+      .join('\n\n')
+
+    const response = await getClient().messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2048,
+      messages: [
+        {
+          role: 'user',
+          content: `Here is a document:
 <document>
 ${truncatedDoc}
 </document>
@@ -132,18 +137,19 @@ ${chunkList}
 
 Respond with a JSON array of strings, one per chunk, in order:
 ["context for chunk 1", "context for chunk 2", ...]`,
-      },
-    ],
-  })
+        },
+      ],
+    })
 
-  const raw = response.content[0].type === 'text' ? response.content[0].text : '[]'
+    const raw = response.content[0].type === 'text' ? response.content[0].text : '[]'
 
-  try {
-    const parsed = JSON.parse(raw.match(/\[[\s\S]*\]/)?.[0] ?? '[]')
-    // Pad or trim to match chunk count
-    const result: string[] = chunks.map((_, i) => parsed[i] ?? '')
-    return result
-  } catch {
-    return chunks.map(() => '')
+    try {
+      const parsed = JSON.parse(raw.match(/\[[\s\S]*\]/)?.[0] ?? '[]')
+      batch.forEach((_, j) => allContexts.push(parsed[j] ?? ''))
+    } catch {
+      batch.forEach(() => allContexts.push(''))
+    }
   }
+
+  return allContexts
 }
