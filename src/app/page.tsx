@@ -308,6 +308,8 @@ export default function Home() {
               disabled={askStatus === 'loading'}
               className="text-sm px-4 py-2 rounded transition-colors disabled:opacity-40"
               style={{ background: '#1a1a18', color: '#f5f4f0' }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#2d2d2a')}
+              onMouseLeave={e => (e.currentTarget.style.background = '#1a1a18')}
             >
               {askStatus === 'loading' ? '...' : 'Ask'}
             </button>
@@ -319,7 +321,7 @@ export default function Home() {
                 <p className="text-sm" style={{ color: '#9a9a8e' }}>Thinking...</p>
               ) : (
                 <>
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: askStatus === 'error' ? '#dc2626' : '#1a1a18' }}>
+                  <p className={`text-sm leading-relaxed whitespace-pre-wrap ${askStatus === 'error' ? 'text-red-600' : ''}`} style={{ color: askStatus === 'error' ? undefined : '#1a1a18' }}>
                     {answer}
                   </p>
                   {sources.length > 0 && (
@@ -370,6 +372,8 @@ export default function Home() {
               disabled={urlStatus === 'loading'}
               className="text-sm px-4 py-2 rounded transition-colors disabled:opacity-40"
               style={{ background: '#1a1a18', color: '#f5f4f0' }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#2d2d2a')}
+              onMouseLeave={e => (e.currentTarget.style.background = '#1a1a18')}
             >
               {urlStatus === 'loading' ? '...' : 'Ingest'}
             </button>
@@ -398,6 +402,8 @@ export default function Home() {
               disabled={ytStatus === 'loading'}
               className="text-sm px-4 py-2 rounded transition-colors disabled:opacity-40"
               style={{ background: '#1a1a18', color: '#f5f4f0' }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#2d2d2a')}
+              onMouseLeave={e => (e.currentTarget.style.background = '#1a1a18')}
             >
               {ytStatus === 'loading' ? '...' : 'Ingest'}
             </button>
@@ -411,16 +417,15 @@ export default function Home() {
             <ul className="mt-2 space-y-0.5 max-h-48 overflow-y-auto">
               {ytResults.map((r) => (
                 <li key={r.videoId} className="text-xs flex gap-2" style={{ color: '#6b6b63' }}>
-                  <span className="shrink-0" style={{
-                    color: r.status === 'ingested' ? '#047857'
-                         : r.status === 'skipped' ? '#9a9a8e'
-                         : '#dc2626'
-                  }}>
+                  <span
+                    className={`shrink-0 ${r.status === 'ingested' ? 'text-emerald-700' : r.status === 'error' ? 'text-red-600' : ''}`}
+                    style={{ color: r.status === 'skipped' ? '#9a9a8e' : undefined }}
+                  >
                     {r.status === 'ingested' ? '▸' : r.status === 'skipped' ? '·' : '×'}
                   </span>
                   <span className="truncate" title={r.error ?? r.title}>{r.title}</span>
                   {r.error && (
-                    <span className="shrink-0 truncate max-w-xs" style={{ color: '#dc2626' }} title={r.error}>
+                    <span className="shrink-0 truncate max-w-xs text-red-600" title={r.error}>
                       {r.error}
                     </span>
                   )}
@@ -471,7 +476,7 @@ export default function Home() {
                     <span style={{ color: '#6b6b63' }}>Elaborazione...</span>
                   )}
                   {item.status === 'duplicate' && (
-                    <span style={{ color: '#9a9a8e' }}>Gia presente</span>
+                    <span style={{ color: '#9a9a8e' }}>Già presente</span>
                   )}
                   {item.status === 'done' && (
                     <span className="text-emerald-700">{item.message}</span>
