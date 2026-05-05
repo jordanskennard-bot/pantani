@@ -16,6 +16,9 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Pantani",
   description: "Libro di corsa",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({

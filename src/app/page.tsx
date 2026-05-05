@@ -434,7 +434,7 @@ export default function Home() {
             </ul>
           )}
           <p className="text-xs mt-2" style={{ color: '#9a9a8e' }}>
-            Ingests all video transcripts. New videos are picked up automatically via <code>/api/poll-youtube</code>.
+            Ingests all video transcripts. New videos are picked up automatically via <code className="font-mono" style={{ color: '#4a4a42' }}>/api/poll-youtube</code>.
           </p>
         </section>
 
@@ -548,7 +548,7 @@ export default function Home() {
                         disabled={deletingId === doc.id}
                         className="text-xs leading-none mt-0.5 transition-colors disabled:opacity-40"
                         style={{ color: '#b8b8ae' }}
-                        onMouseEnter={e => (e.currentTarget.style.color = '#c0392b')}
+                        onMouseEnter={e => (e.currentTarget.style.color = '#dc2626')}
                         onMouseLeave={e => (e.currentTarget.style.color = '#b8b8ae')}
                         title="Remove document"
                       >
