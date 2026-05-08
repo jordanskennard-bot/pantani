@@ -40,25 +40,22 @@ function LoginForm() {
   }
 
   return (
-    <main
-      className="min-h-screen flex items-center justify-center px-6"
-      style={{ background: '#f5f4f0' }}
-    >
+    <main className="min-h-screen flex items-center justify-center px-6">
       <div className="w-full max-w-sm">
 
-        {/* Logo + wordmark */}
-        <div className="flex items-center gap-2 mb-10">
+        {/* Mark + wordmark */}
+        <div className="flex items-center gap-2 mb-2">
           <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style={{ width: 20, height: 20, flexShrink: 0 }}>
-            <path d="M4 22 L16 10 L28 22" stroke="#1a1a18" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M4 22 L16 10 L28 22" stroke="var(--ink)" strokeWidth="2.5" strokeLinecap="square" strokeLinejoin="miter" />
           </svg>
-          <span style={{ fontFamily: 'var(--font-serif)', fontSize: '1.1rem', color: '#1a1a18', letterSpacing: '-0.01em' }}>
+          <span className="font-serif" style={{ fontSize: '1.1rem', color: 'var(--ink)', letterSpacing: 'var(--tracking-tight)' }}>
             Pantani
           </span>
         </div>
 
-        <p className="text-sm mb-8" style={{ color: '#6b6b63' }}>
-          Libro di corsa
-        </p>
+        <p className="caption mb-10">Libro di corsa</p>
+
+        <hr className="rule mb-6" style={{ marginTop: 0 }} />
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <input
@@ -67,23 +64,19 @@ function LoginForm() {
             onChange={e => setPassword(e.target.value)}
             placeholder="Password"
             autoFocus
-            className="rounded px-3 py-2 text-sm focus:outline-none"
-            style={{ background: '#eceae4', border: '1px solid #d8d6ce', color: '#1a1a18' }}
+            className="input"
           />
           <button
             type="submit"
             disabled={loading || !password}
-            className="rounded px-4 py-2 text-sm transition-colors disabled:opacity-40"
-            style={{ background: '#1a1a18', color: '#f5f4f0' }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#2d2d2a')}
-            onMouseLeave={e => (e.currentTarget.style.background = '#1a1a18')}
+            className="btn"
           >
             {loading ? '...' : 'Enter'}
           </button>
         </form>
 
         {error && (
-          <p className="text-xs mt-3 text-red-600">{error}</p>
+          <p className="body-sm mt-3" style={{ color: 'var(--rosa)' }}>{error}</p>
         )}
 
       </div>

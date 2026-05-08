@@ -21,30 +21,9 @@ type Document = {
   tags: string[]
 }
 
-const TAG_COLOURS: Record<string, string> = {
-  competitive_intel:  'bg-rose-100 text-rose-700',
-  programmatic:       'bg-blue-100 text-blue-700',
-  cpm_benchmarks:     'bg-amber-100 text-amber-700',
-  attribution:        'bg-purple-100 text-purple-700',
-  audience:           'bg-teal-100 text-teal-700',
-  merchant_profile:   'bg-green-100 text-green-700',
-  category_knowledge: 'bg-orange-100 text-orange-700',
-  platform_intel:     'bg-sky-100 text-sky-700',
-  regulation:         'bg-stone-100 text-stone-600',
-  adcp:               'bg-violet-100 text-violet-700',
-  artf:               'bg-cyan-100 text-cyan-700',
-  agentic:            'bg-indigo-100 text-indigo-700',
-  new_customer:       'bg-lime-100 text-lime-700',
-  incrementality:     'bg-yellow-100 text-yellow-700',
-  shopify:            'bg-emerald-100 text-emerald-700',
-}
-
-const SOURCE_ICONS: Record<string, string> = {
-  email: '✉',
-  file: '▣',
-  url: '⬡',
-  youtube: '▶',
-}
+// All tags share the paper-tone treatment. Rosa is reserved for emphasis,
+// not category indicators.
+const TAG_CLASS = 'pill'
 
 const SOURCE_LABELS: Record<string, string> = {
   email: 'Email',
@@ -174,7 +153,7 @@ export default function Home() {
     if (totals.ingested > 0) fetchDocs()
 
     if (data.hasMore) {
-      setYtMessage(`${label}: ${totals.ingested} ingested so far — continuing...`)
+      setYtMessage(`${label}: ${totals.ingested} ingested so far, continuing.`)
       setYtStatus('loading')
       await new Promise(r => setTimeout(r, 3_000))
       await runYouTubeIngest(channel, allResults)
@@ -276,68 +255,74 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen" style={{ background: '#f5f4f0', color: '#1a1a18' }}>
+    <main className="min-h-screen">
       <div className="max-w-2xl mx-auto px-6 py-16">
 
-        {/* Header */}
-        <div className="mb-14">
+        {/* Masthead */}
+        <header className="mb-12">
           <div className="flex items-center gap-2 mb-3">
-            <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style={{ width: 20, height: 20, flexShrink: 0 }}>
-              <path d="M4 22 L16 10 L28 22" stroke="#1a1a18" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style={{ width: 18, height: 18, flexShrink: 0 }}>
+              <path d="M4 22 L16 10 L28 22" stroke="var(--ink)" strokeWidth="2.5" strokeLinecap="square" strokeLinejoin="miter" />
             </svg>
-            <span className="text-xs uppercase tracking-widest" style={{ color: '#9a9a8e', letterSpacing: '0.12em' }}>Passo</span>
+            <span className="label">Passo</span>
           </div>
-          <h1 className="text-4xl font-medium tracking-tight" style={{ color: '#1a1a18', fontFamily: 'var(--font-serif)' }}>Pantani</h1>
-          <p className="text-sm mt-2" style={{ color: '#6b6b63' }}>Libro di corsa</p>
-        </div>
+          <h1 className="display" style={{ fontWeight: 'var(--w-regular)' }}>Pantani</h1>
+          <p className="body-sm mt-2" style={{ color: 'var(--ink-3)', fontStyle: 'italic', fontFamily: 'var(--serif)' }}>Libro di corsa</p>
+          <hr className="rule" style={{ marginTop: 'var(--s-5)', marginBottom: 0 }} />
+        </header>
 
         {/* Ask Pantani */}
-        <section className="mb-14">
-          <h2 className="text-xs uppercase tracking-widest mb-3" style={{ color: '#9a9a8e', letterSpacing: '0.12em' }}>Chiedi</h2>
+        <section className="mb-12">
+          <h2 className="label mb-3">Chiedi</h2>
           <form onSubmit={submitQuestion} className="flex gap-2">
             <input
               type="text"
               value={question}
               onChange={e => setQuestion(e.target.value)}
-              placeholder="Ask Pantani anything..."
-              className="flex-1 rounded px-3 py-2 text-sm focus:outline-none"
-              style={{ background: '#eceae4', border: '1px solid #d8d6ce', color: '#1a1a18' }}
+              placeholder="Ask Pantani anything"
+              className="input flex-1"
             />
             <button
               type="submit"
               disabled={askStatus === 'loading'}
-              className="text-sm px-4 py-2 rounded transition-colors disabled:opacity-40"
-              style={{ background: '#1a1a18', color: '#f5f4f0' }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#2d2d2a')}
-              onMouseLeave={e => (e.currentTarget.style.background = '#1a1a18')}
+              className="btn"
             >
               {askStatus === 'loading' ? '...' : 'Ask'}
             </button>
           </form>
 
           {(answer || askStatus === 'loading') && (
-            <div className="mt-4 rounded-lg px-5 py-4" style={{ background: '#eceae4', border: '1px solid #d8d6ce' }}>
+            <div className="card mt-4">
               {askStatus === 'loading' ? (
-                <p className="text-sm" style={{ color: '#9a9a8e' }}>Thinking...</p>
+                <p className="body-sm" style={{ color: 'var(--ink-3)' }}>Thinking...</p>
               ) : (
                 <>
-                  <p className={`text-sm leading-relaxed whitespace-pre-wrap ${askStatus === 'error' ? 'text-red-600' : ''}`} style={{ color: askStatus === 'error' ? undefined : '#1a1a18' }}>
+                  <p
+                    className="body-sm"
+                    style={{
+                      whiteSpace: 'pre-wrap',
+                      color: askStatus === 'error' ? 'var(--rosa)' : 'var(--ink)',
+                      lineHeight: 1.6,
+                    }}
+                  >
                     {answer}
                   </p>
                   {sources.length > 0 && (
-                    <div className="mt-4 pt-3" style={{ borderTop: '1px solid #d8d6ce' }}>
-                      <p className="text-xs mb-2" style={{ color: '#9a9a8e' }}>Sources</p>
+                    <div className="mt-4 pt-3" style={{ borderTop: 'var(--rule-hair)' }}>
+                      <p className="label mb-2">Sources</p>
                       <ul className="space-y-1">
                         {sources.map((s, i) => (
-                          <li key={i} className="flex items-center gap-2 text-xs" style={{ color: '#6b6b63' }}>
-                            <span style={{ color: '#9a9a8e' }}>{SOURCE_ICONS[s.source_type] ?? '▣'}</span>
+                          <li key={i} className="flex items-baseline gap-3 body-sm" style={{ color: 'var(--ink-3)' }}>
+                            <span className="label-sm" style={{ minWidth: 56, color: 'var(--ink-4)' }}>
+                              {SOURCE_LABELS[s.source_type] ?? s.source_type}
+                            </span>
                             {s.source_ref && (s.source_type === 'url' || s.source_type === 'youtube') ? (
                               <a
                                 href={s.source_ref}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="truncate hover:underline"
-                                style={{ color: '#4a4a42' }}
+                                className="truncate link-bare"
+                                style={{ color: 'var(--ink-2)', borderBottom: '1px solid var(--paper-rule)' }}
                               >
                                 {s.title}
                               </a>
@@ -356,76 +341,74 @@ export default function Home() {
         </section>
 
         {/* URL intake */}
-        <section className="mb-8">
-          <h2 className="text-xs uppercase tracking-widest mb-3" style={{ color: '#9a9a8e', letterSpacing: '0.12em' }}>Link</h2>
+        <section className="mb-10">
+          <h2 className="label mb-3">Link</h2>
           <form onSubmit={submitUrl} className="flex gap-2">
             <input
               type="url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://..."
-              className="flex-1 rounded px-3 py-2 text-sm focus:outline-none"
-              style={{ background: '#eceae4', border: '1px solid #d8d6ce', color: '#1a1a18' }}
+              placeholder="https://"
+              className="input flex-1"
             />
             <button
               type="submit"
               disabled={urlStatus === 'loading'}
-              className="text-sm px-4 py-2 rounded transition-colors disabled:opacity-40"
-              style={{ background: '#1a1a18', color: '#f5f4f0' }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#2d2d2a')}
-              onMouseLeave={e => (e.currentTarget.style.background = '#1a1a18')}
+              className="btn"
             >
               {urlStatus === 'loading' ? '...' : 'Ingest'}
             </button>
           </form>
           {urlMessage && (
-            <p className={`text-xs mt-2 ${urlStatus === 'ok' ? 'text-emerald-700' : 'text-red-600'}`}>
+            <p className="body-sm mt-2" style={{ color: urlStatus === 'ok' ? 'var(--forest)' : 'var(--rosa)' }}>
               {urlMessage}
             </p>
           )}
         </section>
 
         {/* YouTube channel */}
-        <section className="mb-8">
-          <h2 className="text-xs uppercase tracking-widest mb-3" style={{ color: '#9a9a8e', letterSpacing: '0.12em' }}>YouTube</h2>
+        <section className="mb-10">
+          <h2 className="label mb-3">YouTube</h2>
           <form onSubmit={submitYouTubeChannel} className="flex gap-2">
             <input
               type="text"
               value={ytChannel}
               onChange={(e) => setYtChannel(e.target.value)}
               placeholder="https://www.youtube.com/@channel or @handle"
-              className="flex-1 rounded px-3 py-2 text-sm focus:outline-none"
-              style={{ background: '#eceae4', border: '1px solid #d8d6ce', color: '#1a1a18' }}
+              className="input flex-1"
             />
             <button
               type="submit"
               disabled={ytStatus === 'loading'}
-              className="text-sm px-4 py-2 rounded transition-colors disabled:opacity-40"
-              style={{ background: '#1a1a18', color: '#f5f4f0' }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#2d2d2a')}
-              onMouseLeave={e => (e.currentTarget.style.background = '#1a1a18')}
+              className="btn"
             >
               {ytStatus === 'loading' ? '...' : 'Ingest'}
             </button>
           </form>
           {ytMessage && (
-            <p className={`text-xs mt-2 ${ytStatus === 'ok' ? 'text-emerald-700' : 'text-red-600'}`}>
+            <p className="body-sm mt-2" style={{ color: ytStatus === 'ok' ? 'var(--forest)' : 'var(--rosa)' }}>
               {ytMessage}
             </p>
           )}
           {ytResults.length > 0 && (
             <ul className="mt-2 space-y-0.5 max-h-48 overflow-y-auto">
               {ytResults.map((r) => (
-                <li key={r.videoId} className="text-xs flex gap-2" style={{ color: '#6b6b63' }}>
+                <li key={r.videoId} className="caption flex gap-3" style={{ color: 'var(--ink-3)' }}>
                   <span
-                    className={`shrink-0 ${r.status === 'ingested' ? 'text-emerald-700' : r.status === 'error' ? 'text-red-600' : ''}`}
-                    style={{ color: r.status === 'skipped' ? '#9a9a8e' : undefined }}
+                    className="label-sm shrink-0"
+                    style={{
+                      minWidth: 48,
+                      color:
+                        r.status === 'ingested' ? 'var(--forest)'
+                        : r.status === 'error' ? 'var(--rosa)'
+                        : 'var(--ink-4)',
+                    }}
                   >
-                    {r.status === 'ingested' ? '▸' : r.status === 'skipped' ? '·' : '×'}
+                    {r.status === 'ingested' ? 'IN' : r.status === 'skipped' ? 'SKIP' : r.status === 'no_transcript' ? 'NONE' : 'ERR'}
                   </span>
                   <span className="truncate" title={r.error ?? r.title}>{r.title}</span>
                   {r.error && (
-                    <span className="shrink-0 truncate max-w-xs text-red-600" title={r.error}>
+                    <span className="shrink-0 truncate max-w-xs" title={r.error} style={{ color: 'var(--rosa)' }}>
                       {r.error}
                     </span>
                   )}
@@ -433,23 +416,25 @@ export default function Home() {
               ))}
             </ul>
           )}
-          <p className="text-xs mt-2" style={{ color: '#9a9a8e' }}>
-            Ingests all video transcripts. New videos are picked up automatically via <code className="font-mono" style={{ color: '#4a4a42' }}>/api/poll-youtube</code>.
+          <p className="caption mt-3" style={{ color: 'var(--ink-4)' }}>
+            Ingests all video transcripts. New videos are picked up automatically via{' '}
+            <code style={{ fontFamily: 'var(--sans)', color: 'var(--ink-2)' }}>/api/poll-youtube</code>.
           </p>
         </section>
 
         {/* File drop */}
         <section className="mb-10">
-          <h2 className="text-xs uppercase tracking-widest mb-3" style={{ color: '#9a9a8e', letterSpacing: '0.12em' }}>File</h2>
+          <h2 className="label mb-3">File</h2>
           <label
             htmlFor="file-input"
             onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
             onDragLeave={() => setIsDragging(false)}
             onDrop={onDrop}
-            className="block rounded-lg p-8 text-center cursor-pointer transition-colors"
+            className="block p-8 text-center cursor-pointer transition-colors"
             style={{
-              border: `2px dashed ${isDragging ? '#9a9a8e' : '#d8d6ce'}`,
-              background: isDragging ? '#eceae4' : 'transparent',
+              border: `1px dashed ${isDragging ? 'var(--ink)' : 'var(--paper-rule)'}`,
+              background: isDragging ? 'var(--paper-2)' : 'transparent',
+              borderRadius: 'var(--r-2)',
             }}
           >
             <input
@@ -460,29 +445,37 @@ export default function Home() {
               multiple
               className="sr-only"
             />
-            <p className="text-sm" style={{ color: '#6b6b63' }}>Drop files here or click to browse</p>
-            <p className="text-xs mt-1" style={{ color: '#9a9a8e' }}>PDF · DOCX · TXT · MD</p>
+            <p className="body-sm" style={{ color: 'var(--ink-2)' }}>Drop files here or click to browse</p>
+            <p className="label-sm mt-2">PDF · DOCX · TXT · MD</p>
           </label>
 
           {queue.length > 0 && (
             <ul className="mt-3 space-y-1">
               {queue.map((item) => (
-                <li key={item.id} className="flex items-center gap-2 text-xs rounded px-3 py-2" style={{ background: '#eceae4', border: '1px solid #d8d6ce' }}>
-                  <span className="flex-1 truncate" style={{ color: '#4a4a42' }}>{item.file.name}</span>
+                <li
+                  key={item.id}
+                  className="flex items-center gap-3 body-sm px-3 py-2"
+                  style={{
+                    background: 'var(--paper-2)',
+                    border: 'var(--rule-hair)',
+                    borderRadius: 'var(--r-1)',
+                  }}
+                >
+                  <span className="flex-1 truncate" style={{ color: 'var(--ink-2)' }}>{item.file.name}</span>
                   {item.status === 'queued' && (
-                    <span style={{ color: '#9a9a8e' }}>In coda</span>
+                    <span className="label-sm">In coda</span>
                   )}
                   {item.status === 'processing' && (
-                    <span style={{ color: '#6b6b63' }}>Elaborazione...</span>
+                    <span className="label-sm" style={{ color: 'var(--ink-3)' }}>Elaborazione</span>
                   )}
                   {item.status === 'duplicate' && (
-                    <span style={{ color: '#9a9a8e' }}>Già presente</span>
+                    <span className="label-sm">Già presente</span>
                   )}
                   {item.status === 'done' && (
-                    <span className="text-emerald-700">{item.message}</span>
+                    <span className="label-sm" style={{ color: 'var(--forest)' }}>{item.message}</span>
                   )}
                   {item.status === 'error' && (
-                    <span className="text-red-600">{item.message}</span>
+                    <span className="label-sm" style={{ color: 'var(--rosa)' }}>{item.message}</span>
                   )}
                 </li>
               ))}
@@ -491,81 +484,104 @@ export default function Home() {
         </section>
 
         {/* Email */}
-        <section className="mb-14 rounded-lg p-5" style={{ background: '#eceae4', border: '1px solid #d8d6ce' }}>
-          <h2 className="text-xs uppercase tracking-widest mb-3" style={{ color: '#9a9a8e', letterSpacing: '0.12em' }}>Email</h2>
-          <p className="text-sm" style={{ color: '#4a4a42' }}>
-            Forward any email to your inbound address and it will be added to the knowledge store automatically.
-          </p>
-          <div className="mt-3 rounded px-3 py-2 text-sm font-mono" style={{ background: '#f5f4f0', color: '#4a4a42' }}>
-            {process.env.NEXT_PUBLIC_INBOUND_EMAIL ?? 'pantani@your-domain.com'}
+        <section className="mb-12">
+          <h2 className="label mb-3">Email</h2>
+          <div className="card">
+            <p className="body-sm" style={{ color: 'var(--ink-2)' }}>
+              Forward any email to the inbound address and it will be added to the knowledge store automatically.
+            </p>
+            <div
+              className="mt-3 px-3 py-2 body-sm"
+              style={{
+                background: 'var(--paper)',
+                border: 'var(--rule-hair)',
+                borderRadius: 'var(--r-1)',
+                fontFamily: 'var(--sans)',
+                color: 'var(--ink)',
+              }}
+            >
+              {process.env.NEXT_PUBLIC_INBOUND_EMAIL ?? 'pantani@your-domain.com'}
+            </div>
           </div>
         </section>
 
         {/* Document list */}
         <section>
-          <h2 className="text-xs uppercase tracking-widest mb-4" style={{ color: '#9a9a8e', letterSpacing: '0.12em' }}>
-            Knowledge store
+          <div className="flex items-baseline justify-between mb-4">
+            <h2 className="label">Knowledge store</h2>
             {!docsLoading && (
-              <span className="ml-2 normal-case" style={{ color: '#b8b8ae' }}>
+              <span className="label-sm">
                 {documents.length} document{documents.length !== 1 ? 's' : ''}
               </span>
             )}
-          </h2>
+          </div>
+          <hr className="rule" style={{ marginTop: 0, marginBottom: 'var(--s-4)' }} />
 
           {docsLoading ? (
-            <p className="text-sm" style={{ color: '#9a9a8e' }}>Loading...</p>
+            <p className="body-sm" style={{ color: 'var(--ink-3)' }}>Loading...</p>
           ) : documents.length === 0 ? (
-            <p className="text-sm" style={{ color: '#9a9a8e' }}>No documents ingested yet.</p>
+            <p className="body-sm" style={{ color: 'var(--ink-3)' }}>No documents ingested yet.</p>
           ) : (
             <ul className="space-y-3">
               {documents.map((doc) => (
                 <li
                   key={doc.id}
-                  className="rounded-lg px-4 py-4 text-sm"
-                  style={{ background: '#eceae4', border: '1px solid #d8d6ce' }}
+                  className="px-4 py-4 body-sm"
+                  style={{
+                    background: 'var(--paper-3)',
+                    border: 'var(--rule-hair)',
+                    borderRadius: 'var(--r-2)',
+                  }}
                 >
                   <div className="flex items-start gap-3">
-                    <span className="mt-0.5 w-4 shrink-0 text-xs" style={{ color: '#9a9a8e' }} title={SOURCE_LABELS[doc.source_type]}>
-                      {SOURCE_ICONS[doc.source_type]}
+                    <span
+                      className="label-sm shrink-0"
+                      style={{ minWidth: 56, marginTop: 4, color: 'var(--ink-4)' }}
+                      title={SOURCE_LABELS[doc.source_type]}
+                    >
+                      {SOURCE_LABELS[doc.source_type] ?? doc.source_type}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="truncate font-medium" style={{ color: '#1a1a18' }}>
+                      <p className="truncate" style={{ color: 'var(--ink)', fontWeight: 'var(--w-medium)' }}>
                         {doc.title ?? doc.source_ref ?? '(untitled)'}
                       </p>
                       {doc.source_type === 'email' && doc.source_from && (
-                        <p className="text-xs truncate mt-0.5" style={{ color: '#9a9a8e' }}>{doc.source_from}</p>
+                        <p className="caption truncate mt-0.5" style={{ color: 'var(--ink-3)' }}>{doc.source_from}</p>
                       )}
                     </div>
                     <div className="text-right shrink-0 flex items-start gap-3">
                       <div>
-                        <p className="text-xs" style={{ color: '#9a9a8e' }}>{formatDate(doc.created_at)}</p>
-                        {doc.token_count && (
-                          <p className="text-xs mt-0.5" style={{ color: '#b8b8ae' }}>~{doc.token_count.toLocaleString()} tok</p>
+                        <p className="label-sm" style={{ color: 'var(--ink-4)' }}>{formatDate(doc.created_at)}</p>
+                        {doc.token_count != null && (
+                          <p className="label-sm mt-0.5" style={{ color: 'var(--ink-4)' }}>~{doc.token_count.toLocaleString()} tok</p>
                         )}
                       </div>
                       <button
                         onClick={() => deleteDoc(doc.id)}
                         disabled={deletingId === doc.id}
-                        className="text-xs leading-none mt-0.5 transition-colors disabled:opacity-40"
-                        style={{ color: '#b8b8ae' }}
-                        onMouseEnter={e => (e.currentTarget.style.color = '#dc2626')}
-                        onMouseLeave={e => (e.currentTarget.style.color = '#b8b8ae')}
+                        className="leading-none transition-colors disabled:opacity-40"
+                        style={{ color: 'var(--ink-4)', fontSize: '14px', marginTop: 2 }}
+                        onMouseEnter={e => (e.currentTarget.style.color = 'var(--rosa)')}
+                        onMouseLeave={e => (e.currentTarget.style.color = 'var(--ink-4)')}
                         title="Remove document"
+                        aria-label="Remove document"
                       >
                         {deletingId === doc.id ? '...' : '×'}
                       </button>
                     </div>
                   </div>
                   {doc.summary && (
-                    <p className="text-xs mt-3 ml-7 leading-relaxed" style={{ color: '#6b6b63' }}>{doc.summary}</p>
+                    <p
+                      className="caption mt-3 leading-relaxed"
+                      style={{ marginLeft: 68, color: 'var(--ink-2)' }}
+                    >
+                      {doc.summary}
+                    </p>
                   )}
                   {doc.tags?.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2 ml-7">
+                    <div className="flex flex-wrap gap-1 mt-2" style={{ marginLeft: 68 }}>
                       {doc.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className={`text-xs px-2 py-0.5 rounded ${TAG_COLOURS[tag] ?? 'bg-stone-100 text-stone-600'}`}
-                        >
+                        <span key={tag} className={TAG_CLASS}>
                           {tag.replace(/_/g, ' ')}
                         </span>
                       ))}
