@@ -246,6 +246,7 @@ export async function ingestVideo(
     })
     return { videoId, title, status: 'ingested' }
   } catch (err) {
+    console.error(`[ingestVideo] ${videoId} "${title}" failed:`, err instanceof Error ? err.message : err)
     return {
       videoId,
       title,
