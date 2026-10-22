@@ -49,4 +49,13 @@ export async function embedQuery(text: string): Promise<number[]> {
   return results[0]
 }
 
+// Embed several queries in one request. Voyage takes an array of inputs, and
+// the free tier allows 3 requests a minute, so a caller with one query per
+// item (the recommend route, one per finding) must batch rather than loop.
+// Returned in the order given.
+export async function embedQueries(texts: string[]): Promise<number[][]> {
+  if (texts.length === 0) return []
+  return callVoyage(texts, 'query')
+}
+
 export { EMBEDDING_DIM }

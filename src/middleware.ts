@@ -6,6 +6,7 @@ const PUBLIC_PATHS = [
   '/api/auth',
   '/api/ingest/email',   // Postmark webhook — has its own key auth
   '/api/poll-youtube',   // Vercel cron — internal only
+  '/api/recommend',      // Passo health check — has its own key auth
 ]
 
 async function hashPassword(password: string): Promise<string> {
