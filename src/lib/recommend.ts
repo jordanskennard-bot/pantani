@@ -19,7 +19,6 @@
 // source mapping and the auth check can be tested with the Voyage, Supabase
 // and Anthropic calls injected.
 
-import { createHash, timingSafeEqual } from 'node:crypto'
 import { z } from 'zod'
 
 // ─── The request ────────────────────────────────────────────────────────────
@@ -62,28 +61,6 @@ export const RecommendRequestSchema = z.object({
 
 export type Finding = z.infer<typeof FindingSchema>
 export type RecommendRequest = z.infer<typeof RecommendRequestSchema>
-
-// ─── Auth ───────────────────────────────────────────────────────────────────
-
-export type AuthOutcome = { ok: true } | { ok: false; status: 401 | 503 }
-
-const sha256 = (value: string) => createHash('sha256').update(value, 'utf8').digest()
-
-/**
- * The service key check. 503 when the key is unset on the server, because that
- * is our misconfiguration rather than a bad caller. 401 for anything else,
- * with no detail about which part was wrong.
- *
- * Both sides are hashed before the comparison so timingSafeEqual gets two
- * buffers of the same length whatever was sent, and a wrong key of the wrong
- * length is refused on the same path as a wrong key of the right length.
- */
-export function checkServiceKey(authorization: string | null, expected: string | undefined): AuthOutcome {
-  if (!expected) return { ok: false, status: 503 }
-  const provided = authorization?.startsWith('Bearer ') ? authorization.slice(7).trim() : ''
-  if (!provided) return { ok: false, status: 401 }
-  return timingSafeEqual(sha256(provided), sha256(expected)) ? { ok: true } : { ok: false, status: 401 }
-}
 
 // ─── Retrieval ──────────────────────────────────────────────────────────────
 
