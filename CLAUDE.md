@@ -174,7 +174,7 @@ Set in `.env.local` locally, and in Vercel project settings for production. All 
 
 | Variable | What it is |
 |---|---|
-| `SUPABASE_URL` | Project URL from Supabase settings |
+| `SUPABASE_URL` | Project URL from Supabase settings. The project is **jordanskennard-bot's Project**, which is not the Passo project: Passo's platform database is a separate project in the same account, and it has no pgvector, no `documents` and no `chunks`. Run a migration from `supabase/migrations/` against this one. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service role key (not anon key) — has full DB access |
 | `VOYAGE_API_KEY` | Voyage AI key for embeddings |
 | `ANTHROPIC_API_KEY` | Anthropic key — used by Haiku (ingest) and Sonnet (ask) |
