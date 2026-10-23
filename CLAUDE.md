@@ -95,6 +95,27 @@ Every piece of knowledge follows the same path through `src/lib/ingest.ts`:
 | YouTube channel | `POST /api/ingest/youtube-channel` | Bulk-ingests transcripts from a channel. Body: `{ "channel": "@handle or URL" }`. Skips already-ingested videos. |
 | YouTube poll | `GET /api/poll-youtube` | Ingests new videos within `YOUTUBE_LOOKBACK_DAYS` from channels in `YOUTUBE_CHANNEL_IDS`. For Vercel cron. |
 
+## Service routes (called by the Passo health check, not by an operator)
+
+Both authenticate with `PANTANI_SERVICE_KEY` as a bearer token through
+`src/lib/service-auth.ts`, are listed in `PUBLIC_PATHS` in `src/middleware.ts`
+so the operator login does not intercept them, store nothing from the request,
+and log nothing from its body. Each makes one Voyage call and one Anthropic
+call (`claude-sonnet-4-5`) for the whole batch.
+
+| Route | What it does |
+|---|---|
+| `POST /api/recommend` | Takes the health check findings that need action and returns one recommendation per finding, each opening "We recommend". Improves the advice on a finding the coded rules raised, and nothing else: it never grades a finding or touches a number. Work in `src/lib/recommend.ts`. |
+| `POST /api/ideas` | Takes the sections of a health check that ran and returns nought to three ideas worth testing for each: new features, betas and tactics the account is not using yet. Covers what the coded rules cannot know about, which is anything new. Every idea must cite a passage from inside the recency window, so there is no general practice fallback. Work in `src/lib/ideas.ts`. |
+
+**Why ideas have no fallback and recommendations do.** A recommendation with no
+passage behind it is still useful advice, so `/api/recommend` writes it from
+general paid media practice and returns no sources. An idea exists only because
+something was learnt lately, so an idea with nothing behind it is not news and
+claiming otherwise would misstate where it came from. `/api/ideas` returns
+nought ideas instead, which is the common answer and shows nothing extra on the
+page.
+
 **Email routing:** any email address (Gmail, Zoho, etc.) → forwarded to Postmark inbound address → Postmark POSTs parsed JSON to `https://pantani.passo.ad/api/ingest/email?key=INBOUND_EMAIL_SECRET`.
 
 **Postmark inbound format:** `From`, `Subject`, `TextBody`, `HtmlBody`, `Attachments[]` (base64 encoded). The route normalises across Postmark and generic formats.
@@ -119,7 +140,7 @@ Every piece of knowledge follows the same path through `src/lib/ingest.ts`:
 - `context_prefix` — Claude's insight-focused prefix: the key fact or claim in this chunk
 - `embedding` — vector(512), IVFFlat indexed for cosine similarity search
 
-**`search_knowledge()`** — RPC function for vector search, supports filtering by `source_type` and `tags[]`. Returns document-level `key_insights` alongside each chunk so the Ask route can present both extracted insights and specific passages to Claude Sonnet for synthesis.
+**`search_knowledge()`** — RPC function for vector search, supports filtering by `source_type`, `tags[]` and `filter_after` (migration 007: documents ingested on or after a timestamp). Returns document-level `key_insights` alongside each chunk so the Ask route can present both extracted insights and specific passages to Claude Sonnet for synthesis, plus `document_date` (the document's `created_at`) so a caller can show how old a passage is or apply its own recency rule.
 
 ---
 
@@ -163,6 +184,8 @@ Set in `.env.local` locally, and in Vercel project settings for production. All 
 | `YOUTUBE_CHANNEL_IDS` | Comma-separated channels for `/api/poll-youtube` |
 | `YOUTUBE_LOOKBACK_DAYS` | How far back the poll route looks for new videos (default `7`) |
 | `SUPADATA_API_KEY` | Supadata API key for YouTube transcript fetching (bypasses Vercel/AWS IP blocks) |
+| `PANTANI_SERVICE_KEY` | Shared secret for the service routes `/api/recommend` and `/api/ideas` — sent as `Authorization: Bearer`. Unset means both answer 503, which is the off switch for both features in the health check. |
+| `PANTANI_IDEAS_WINDOW_DAYS` | How far back `/api/ideas` looks for recent knowledge (default `120`). Anything other than a positive whole number falls back to the default. |
 
 ---
 

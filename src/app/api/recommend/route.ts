@@ -13,13 +13,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { embedQueries } from '@/lib/embeddings'
 import { getSupabase } from '@/lib/supabase'
+import { checkServiceKey } from '@/lib/service-auth'
 import {
   MATCH_COUNT,
   RECOMMEND_TOOL,
   RecommendError,
   RecommendRequestSchema,
   buildRecommendations,
-  checkServiceKey,
   type ModelRecommendation,
   type SearchRow,
 } from '@/lib/recommend'
