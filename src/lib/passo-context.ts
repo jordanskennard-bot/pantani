@@ -14,7 +14,7 @@ What Passo sells is judgement: one joined-up view of account set-up, measurement
 
 Who it serves: today any client it can win, mainly consulting work. The end state is Shopify subscription and repeat-purchase brands spending £20k to £200k a month, UK first, with France, Germany, the Nordics and the Netherlands later. For subscription brands it optimises to retained subscribers and payback, not first-order return.
 
-The offer: a free light health check, then Observe (read-only access, monthly health checks, weekly recommendations the client acts on), then Activate (Passo makes the changes). Consulting projects (media brief, health check, annual review, strategy) are sold alongside.
+The offer: a free Day 3 strategy report (strategy, a light health check of the ads, products, audience, channel mix, competitors, media plan and targets), then Observe (read-only access, monthly health checks, weekly recommendations the client acts on), then Activate (Passo makes the changes). Consulting projects (media brief, health check, annual review, strategy) are sold alongside.
 
 How it measures: Shopify and the client's own data come before platform-reported numbers. Passo runs its own tests, geo holdouts included. Every report leads with Passo value: the extra revenue and savings a recommendation should deliver, and what changes delivered. Passo does not recommend brand search, keeps it out of acquisition cost, and reports it separately where a client runs it. Retention and remarketing media are allowed.
 
@@ -26,4 +26,4 @@ Every diagnosis and recommendation is organised by six pillars:
 5. Creative: formats, variants, refresh rate, fatigue, messaging.
 6. Validation, reporting and insights: tests, reporting against the client's own data, what drove each change.
 
-Pantani is Jordan's knowledge bank of newsletters, videos, podcasts and documents. Its job is to supply a point of view where it differs from platform best practice or adds something new, especially new features, betas and tactics a coded health check would not know about.`
+Pantani is Jordan's knowledge bank of newsletters, videos, podcasts and documents. Its point of view goes into every Passo output, from the Day 3 report to weekly recommendations, wherever it differs from platform best practice or adds something new: especially new features, betas and tactics a coded health check would not know about.`
