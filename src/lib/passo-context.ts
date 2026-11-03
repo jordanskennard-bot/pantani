@@ -6,7 +6,7 @@
 // PASSO_CONTEXT_VERSION, then run scripts/reclassify.ts so the stored
 // summaries, key insights and tags are rewritten against the new context.
 
-export const PASSO_CONTEXT_VERSION = '2026-11-03'
+export const PASSO_CONTEXT_VERSION = '2026-11-03b'
 
 export const PASSO_CONTEXT = `Passo (The Passo Agency, passoagency.com) is a UK paid media service for Shopify brands. It uses whatever channels, formats and tools fit the brand and judges each on results: Meta, Google (Search, Shopping, Performance Max, Demand Gen, YouTube), Pinterest, TikTok, open-web display and anything else that works. It uses platform automation where it fits.
 

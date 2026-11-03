@@ -108,7 +108,7 @@ Rules:
 - Judge relevance on whether it helps advise a Shopify brand. Content about any channel, format or tool can be relevant.
 - key_insights: 3-8 items. Each is a complete, standalone statement of what the source says. Report the source's facts and claims, attributed where useful ("the speaker reports..."). Do not explain what the insight means for Passo.
 - Prioritise specific data points, settings, test results, new features and betas over general observations. If the document has no specific facts, give its 3-5 most actionable points.
-- tags: every pillar and channel tag that clearly applies, plus any context tags. Usually 2-6.
+- tags: tag only what the document is mainly about, so a tag is useful for filtering. At most two pillar tags (strategy, kpis_metrics, data_tech, governance, creative, validation), at most two channel tags, and at most two context tags. A passing mention does not earn a tag. If no pillar is a main subject, use none. Most documents need 2-4 tags in total.
 - If the transcript or text is missing or empty, say so in the summary, return no key insights and no tags.`,
       },
     ],
