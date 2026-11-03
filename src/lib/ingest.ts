@@ -3,6 +3,7 @@ import { getSupabase } from './supabase'
 import { embedTexts } from './embeddings'
 import { chunkText } from './chunk'
 import { classifyDocument, generateChunkContexts } from './comprehend'
+import { PASSO_CONTEXT_VERSION } from './passo-context'
 
 type IngestInput = {
   sourceType: 'email' | 'file' | 'url' | 'youtube'
@@ -62,7 +63,7 @@ export async function ingest(input: IngestInput): Promise<IngestResult> {
       title: title ?? sourceRef ?? null,
       raw_text: text,
       token_count: Math.round(text.length / 4),
-      metadata,
+      metadata: { ...metadata, passo_context: PASSO_CONTEXT_VERSION },
       summary: comprehension.summary,
       key_insights: comprehension.key_insights,
       tags: comprehension.tags,

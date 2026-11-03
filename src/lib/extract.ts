@@ -19,7 +19,7 @@ export async function extractUrl(url: string): Promise<{ title: string; text: st
   const res = await fetch(url, {
     headers: {
       'User-Agent':
-        'Mozilla/5.0 (compatible; Pantani-KnowledgeBot/1.0; +https://passo.io)',
+        'Mozilla/5.0 (compatible; Pantani-KnowledgeBot/1.0; +https://passoagency.com)',
     },
     signal: AbortSignal.timeout(15_000),
   })

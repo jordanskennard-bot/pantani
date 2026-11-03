@@ -1,28 +1,58 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { PASSO_CONTEXT } from './passo-context.ts'
 
 // Initialised lazily so the env var is read at call time, not module load time
 function getClient() {
   return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 }
 
-// The fixed tag vocabulary — maps to Pantani's agent knowledge domains
+// The fixed tag vocabulary. Six tags follow the pillars of the Passo framework,
+// five name channels, and the rest carry context. Definitions the model sees
+// are in TAG_DEFINITIONS below; keep the two in step.
 export const KNOWLEDGE_TAGS = [
-  'competitive_intel',   // Triple Whale, Criteo, AdRoll, other platforms
-  'programmatic',        // how buying works, DSPs, SSPs, inventory mechanics
-  'cpm_benchmarks',      // pricing data, CPM ranges by format/channel
-  'attribution',         // ROAS measurement, Shopify reconciliation, view-through
-  'audience',            // targeting, signals, lookalikes, intent scoring
-  'merchant_profile',    // DTC merchant behaviour, psychology, decision-making
-  'category_knowledge',  // homeware, fashion, skincare, specific verticals
-  'platform_intel',      // PubMatic, Meta, Google specifics, AgenticOS
-  'regulation',          // GDPR, brand safety, IAB standards, consent
-  'adcp',                // Ads Context Protocol — agentic ad buying standards and specs
-  'artf',                // Agentic Real Time Framework — real-time agentic media execution
-  'agentic',             // AI agents in media buying, autonomous campaign management
-  'new_customer',        // new customer acquisition, prospecting, new-to-brand measurement, incremental reach
-  'incrementality',      // lift studies, causal measurement, verified vs platform-reported ROAS, Shopify reconciliation
-  'shopify',             // Shopify platform specifics, revenue data, order reconciliation, merchant store structure
+  // Pillars of the Passo framework
+  'strategy',            // messages, products, channel and budget allocation, seasonality, markets
+  'kpis_metrics',        // unit economics, margin, CAC, LTV, payback, optimisation targets
+  'data_tech',           // pixels, Conversions API, tags, consent, feeds, data flows
+  'governance',          // account and campaign settings, structure, automation, budgets
+  'creative',            // formats, variants, refresh, fatigue, messaging
+  'validation',          // tests, geo holdouts, lift, attribution, reporting against own data
+  // Channels
+  'meta',
+  'google',              // Search, Shopping, PMax, Demand Gen, YouTube ads, Merchant Center
+  'pinterest',
+  'tiktok',
+  'other_channels',      // open-web display, CTV, audio, affiliates, retail media, new channels
+  // Context
+  'shopify',             // Shopify platform, apps, checkout, order data
+  'subscription',        // subscription and repeat-purchase economics, retention
+  'merchant_profile',    // how DTC brands behave, decide and spend
+  'category_knowledge',  // vertical-specific knowledge
+  'competitive_intel',   // agencies, tools and platforms competing with or adjacent to Passo
+  'platform_changes',    // new features, betas, policy and algorithm changes
+  'regulation',          // privacy, consent, brand safety, advertising standards
+  'ai_in_marketing',     // AI tools and automation in media buying and agency work
 ] as const
+
+const TAG_DEFINITIONS = `- strategy: which messages and products to push, channel and budget allocation, where and when to advertise, seasonality, market entry
+- kpis_metrics: unit economics, contribution margin, CAC against LTV, payback, new-customer targets, the targets campaigns optimise to
+- data_tech: pixels, Conversions API, server-side tagging, consent mode, product feeds, GA4, data flows into Shopify and the platforms
+- governance: account and campaign settings, structure, consolidation, naming, bidding and automation settings, budgets and caps
+- creative: ad formats, creative strategy, variants and diversity, refresh and fatigue, hooks, messaging, UGC and creators
+- validation: incrementality and lift tests, geo holdouts, MMM, attribution models, reporting against Shopify or the brand's own data
+- meta: Facebook and Instagram ads, Advantage+, Andromeda, Partnership Ads
+- google: Google Search, Shopping, Performance Max, Demand Gen, YouTube ads, Merchant Center
+- pinterest: Pinterest ads
+- tiktok: TikTok ads and TikTok Shop
+- other_channels: open-web display, CTV, audio, affiliates, retail media, email or SMS where paid media interacts, any other channel
+- shopify: Shopify platform specifics, apps, checkout, order and customer data
+- subscription: subscription and repeat-purchase businesses, retention, churn, payback on retained customers
+- merchant_profile: how DTC and ecommerce brands behave, decide, staff and spend on paid media
+- category_knowledge: knowledge specific to a vertical such as beauty, fashion, food, homeware, supplements
+- competitive_intel: agencies, software and platforms that compete with or sit next to Passo, and how they sell
+- platform_changes: new features, betas, pilots, policy or algorithm changes on any platform
+- regulation: privacy law, consent, brand safety, advertising standards
+- ai_in_marketing: AI tools, agents and automation used in media buying, creative or agency work`
 
 export type KnowledgeTag = typeof KNOWLEDGE_TAGS[number]
 
@@ -48,46 +78,38 @@ export async function classifyDocument(text: string): Promise<DocumentComprehens
     messages: [
       {
         role: 'user',
-        content: `You are classifying documents for Pantani — the knowledge and orchestration layer of Passo, an autonomous programmatic media agency for Shopify DTC merchants in the UK.
+        content: `You are classifying documents for Pantani, the knowledge bank behind Passo.
 
-Passo's model: it connects to a merchant's Shopify store, builds a media strategy, and autonomously executes programmatic media (display, native, audio, CTV) across premium publisher inventory — channels small merchants cannot normally access. It focuses exclusively on new customer acquisition, never retargeting. Shopify order data is the single source of truth for measuring success, not platform-reported ROAS figures.
+<passo>
+${PASSO_CONTEXT}
+</passo>
 
-The technology: Passo uses PubMatic's AgenticOS (an implementation of the Agentic Real Time Framework, ARTF) to buy inventory autonomously without a trading desk. It buys through AdCP (Ads Context Protocol) — direct from premium publishers rather than open RTB exchanges. The intelligence layer runs on the Claude API.
-
-Classify this document. Extract the key facts and insights that Passo's agents (Galibier for strategy, Gavia for attribution, Izoard for audience, Stelvio for execution) would find decision-relevant.
+Classify this document. Pull out the facts and insights that would help Passo advise a Shopify brand on its paid media, under any of the six pillars and on any channel.
 
 <document>
 ${truncated}
 </document>
 
 Tag definitions:
-- competitive_intel: research on Triple Whale, Criteo GO, AdRoll, Meta, Google, or other platforms competing with or adjacent to Passo
-- programmatic: how programmatic buying works — DSPs, SSPs, RTB mechanics, inventory types, ad formats, supply path
-- cpm_benchmarks: CPM pricing data, floor prices, rate cards, cost benchmarks by format, channel, or vertical
-- attribution: ROAS measurement methodologies, last-click vs view-through, MTA, MMM, platform attribution models
-- audience: targeting approaches, audience signals, lookalikes, intent scoring, contextual targeting
-- merchant_profile: DTC merchant behaviour, psychology, decision-making, paid media maturity, spend patterns
-- category_knowledge: vertical-specific knowledge — homeware, fashion, skincare, consumer goods, specific product categories
-- platform_intel: PubMatic, AgenticOS, Meta Ads, Google Ads, specific platform mechanics, publisher environments
-- regulation: GDPR, brand safety, IAB standards, consent frameworks, ISBA/ANA governance
-- adcp: Ads Context Protocol — the standard for agentic, direct programmatic buying from premium publishers outside open RTB
-- artf: Agentic Real Time Framework — the technical framework enabling autonomous real-time programmatic execution by AI agents
-- agentic: AI agents in media buying, autonomous campaign management, agent architecture, agent registries (IAB Tech Lab)
-- new_customer: new customer acquisition strategies, prospecting, new-to-brand targeting, incremental reach, upper-funnel buying
-- incrementality: lift studies, incrementality testing, causal attribution, verifying whether media spend actually drove sales vs organic
-- shopify: Shopify platform specifics, revenue reconciliation against order data, Shopify API, merchant store data structures
+${TAG_DEFINITIONS}
 
 Respond with JSON only, no explanation:
 {
-  "summary": "2-3 sentences covering what this document is about and why it is relevant to Passo",
+  "summary": "2-3 sentences: what the document says, and which pillars or channels it informs for Passo",
   "key_insights": [
-    "Specific fact, statistic, claim, or decision-relevant finding — include numbers, names, dates where present",
+    "Specific fact, statistic, claim, tactic or new feature, with numbers, names and dates where present",
     "..."
   ],
   "tags": ["tag1", "tag2"]
 }
 
-key_insights rules: 3-8 items. Each must be a complete, standalone statement. Prioritise specific data points (CPM figures, percentages, platform names, dates) over general observations. If the document contains no specific facts, summarise the 3-5 most actionable points.`,
+Rules:
+- Write the summary and key insights in English, whatever language the document is in.
+- Judge relevance on whether it helps advise a Shopify brand. Content about any channel, format or tool can be relevant.
+- key_insights: 3-8 items. Each is a complete, standalone statement of what the source says. Report the source's facts and claims, attributed where useful ("the speaker reports..."). Do not explain what the insight means for Passo.
+- Prioritise specific data points, settings, test results, new features and betas over general observations. If the document has no specific facts, give its 3-5 most actionable points.
+- tags: every pillar and channel tag that clearly applies, plus any context tags. Usually 2-6.
+- If the transcript or text is missing or empty, say so in the summary, return no key insights and no tags.`,
       },
     ],
   })
