@@ -3,54 +3,22 @@
 
 # Pantani — Libro di corsa
 
-Pantani is the knowledge layer of **Passo**, an autonomous programmatic media agency for Shopify DTC merchants in the UK. The name comes from Marco Pantani; "libro di corsa" is Italian for race book — the knowledge base agents consult when making decisions.
+Pantani is Jordan's knowledge bank and the knowledge layer of **Passo**, a UK paid media service for Shopify brands. The name comes from Marco Pantani; "libro di corsa" is Italian for race book.
 
-Pantani is a RAG (Retrieval Augmented Generation) knowledge store. You feed it documents, emails, and URLs. It classifies, chunks, and embeds them. Specialist agents query it to inform media decisions.
+Pantani is a RAG (Retrieval Augmented Generation) knowledge store. You feed it newsletters, videos, documents, emails and URLs. It classifies, chunks and embeds them. Jordan queries it through Ask, and the Passo health check calls it for recommendations and ideas worth testing.
 
 ---
 
 ## What Passo is
 
-Passo connects to a merchant's Shopify store, studies their business, builds a media strategy, executes that strategy across programmatic channels, and delivers a monthly narrative report — without requiring the merchant to understand programmatic advertising or manage campaigns.
+Passo's single source of truth is the Passo plan in the claude.ai Passo Project (`plan/PLAN.md`, `plan/decisions.md`). Pantani carries a short version of it in `src/lib/passo-context.ts`, which both the ingest classifier and the Ask route use.
 
-**Three core differentiators:**
-1. **New customer only** — Passo never retargets. Every impression targets people who have never bought from the merchant. New customer count, verified against Shopify order history, is the primary metric.
-2. **Shopify as single source of truth** — the merchant's store is the brief. All results are reconciled against actual Shopify revenue, not platform-reported ROAS figures (which systematically overcount via view-through attribution).
-3. **Transparent strategy** — before spending a pound, the merchant approves a complete strategy with projected ROAS range, format mix, and audience rationale. Every month a narrative report explains what happened and why.
+When the plan changes:
+1. Update `PASSO_CONTEXT` in `src/lib/passo-context.ts`.
+2. Bump `PASSO_CONTEXT_VERSION`.
+3. Run `scripts/reclassify.ts` (see below) so stored summaries, key insights and tags are rewritten against the new context.
 
-**Business model:** principal-based media buying. Passo buys inventory at cost and charges merchants a blended rate that includes the margin. As cross-merchant learning improves buying efficiency, costs fall at the same merchant-facing price — margin widens automatically.
-
-**Why now:** PubMatic launched AgenticOS in January 2026 — the first production implementation of agentic RTB accessible to small advertisers without a trading desk. This removes the primary technical barrier. Passo is built on top of it.
-
----
-
-## The technology layer
-
-**AgenticOS (PubMatic)** — the programmatic execution layer. An implementation of the Agentic Real Time Framework (ARTF). Enables autonomous real-time bidding without a DSP relationship or trading desk.
-
-**AdCP (Ads Context Protocol)** — the buying standard Passo uses to purchase directly from premium publishers, bypassing open RTB exchanges where fraud, wastage, and brand safety failures are endemic.
-
-**Claude API (Sonnet)** — powers the intelligence layer: watching period analysis, strategy generation, and monthly narrative writing.
-
-**Cross-merchant learning layer** — every campaign outcome feeds a shared dataset of which publishers, formats, and audience signals drive verified new customer acquisition for which product categories at which spend levels. This is the structural moat.
-
----
-
-## Agent architecture
-
-Internal agents are named after Alpine climbs. These names are internal only — no cycling language appears in merchant-facing communication.
-
-| Agent | Role |
-|---|---|
-| **Pantani** | Orchestration layer — coordinator, memory, reflection |
-| **Galibier** | Strategy — media planning, channel mix, budget allocation |
-| **Stelvio** | Execution — campaign management, bid optimisation |
-| **Mortirolo** | Anomaly detection — performance monitoring, alerting |
-| **Gavia** | Attribution — Shopify reconciliation, ROAS verification |
-| **Izoard** | Audience intelligence — targeting, signals, lookalikes |
-| **Tourmalet** | Narrative — monthly report writing, merchant communication |
-
-Galibier, Gavia, Izoard, and Tourmalet are the primary consumers of Pantani's knowledge store.
+Do not describe Passo anywhere else in this repo. The old positioning (autonomous programmatic buying through PubMatic AgenticOS and AdCP, never retargeting, principal-based buying, the Galibier, Stelvio and Gavia agents) is retired. The climb names survive only as internal agent names in the Passo platform and never appear in Pantani prompts.
 
 ---
 
@@ -67,7 +35,7 @@ Galibier, Gavia, Izoard, and Tourmalet are the primary consumers of Pantani's kn
 | DOCX extraction | `mammoth` |
 | HTML scraping | `cheerio` |
 | Inbound email | Postmark — receives forwarded emails, POSTs parsed JSON to `/api/ingest/email` |
-| Deployment | Vercel — live at `pantani.passo.ad` |
+| Deployment | Vercel project `pantani-sm67` — live at `pantani.passoagency.com` |
 
 ---
 
@@ -76,7 +44,7 @@ Galibier, Gavia, Izoard, and Tourmalet are the primary consumers of Pantani's kn
 Every piece of knowledge follows the same path through `src/lib/ingest.ts`:
 
 1. **Duplicate check** — MD5 hash of raw text, checked against `documents.content_hash`. Returns immediately if already stored. No API calls wasted.
-2. **Classify** — one Claude Haiku call: produces a summary, 3-8 key_insights (specific facts/stats extracted from the document), and tags from the fixed vocabulary.
+2. **Classify** — one Claude Haiku call against the Passo context: produces an English summary, 3-8 key_insights (the source's own facts, stats and tactics) and tags from the fixed vocabulary. The context version is recorded in `metadata.passo_context`.
 3. **Store document** — inserts into `documents` table with summary, key_insights, tags, content_hash, raw_text.
 4. **Chunk** — splits text into ~500-token overlapping chunks (`src/lib/chunk.ts`).
 5. **Contextualise** — one Claude Haiku call for the whole document: generates an insight-focused prefix per chunk identifying the key fact or claim in that chunk (not just its location). Embedded with the chunk to improve retrieval of specific data points.
@@ -116,7 +84,7 @@ claiming otherwise would misstate where it came from. `/api/ideas` returns
 nought ideas instead, which is the common answer and shows nothing extra on the
 page.
 
-**Email routing:** any email address (Gmail, Zoho, etc.) → forwarded to Postmark inbound address → Postmark POSTs parsed JSON to `https://pantani.passo.ad/api/ingest/email?key=INBOUND_EMAIL_SECRET`.
+**Email routing:** any email address (Gmail, Zoho, etc.) → forwarded to Postmark inbound address → Postmark POSTs parsed JSON to `https://pantani.passoagency.com/api/ingest/email?key=INBOUND_EMAIL_SECRET`.
 
 **Postmark inbound format:** `From`, `Subject`, `TextBody`, `HtmlBody`, `Attachments[]` (base64 encoded). The route normalises across Postmark and generic formats.
 
@@ -146,25 +114,24 @@ page.
 
 ## Tag vocabulary
 
-Full set — do not change without updating `src/lib/comprehend.ts` and informing agents:
+Defined in `src/lib/comprehend.ts` (`KNOWLEDGE_TAGS` and `TAG_DEFINITIONS`; keep the two in step). Six tags follow the pillars of the Passo framework, five name channels, the rest carry context.
 
-| Tag | What it covers |
+| Group | Tags |
 |---|---|
-| `competitive_intel` | Triple Whale, Criteo GO, AdRoll, Meta, Google — competitors and adjacent platforms |
-| `programmatic` | How programmatic buying works — DSPs, SSPs, RTB, inventory types, ad formats |
-| `cpm_benchmarks` | CPM pricing data, floor prices, rate cards, cost benchmarks by format/channel/vertical |
-| `attribution` | ROAS methodologies, last-click vs view-through, MTA, MMM, platform attribution models |
-| `audience` | Targeting, audience signals, lookalikes, intent scoring, contextual targeting |
-| `merchant_profile` | DTC merchant behaviour, psychology, paid media maturity, spend patterns |
-| `category_knowledge` | Vertical-specific knowledge — homeware, fashion, skincare, consumer goods |
-| `platform_intel` | PubMatic, AgenticOS, Meta Ads, Google Ads, specific platform mechanics |
-| `regulation` | GDPR, brand safety, IAB standards, consent, ISBA/ANA governance |
-| `adcp` | Ads Context Protocol — agentic direct buying from premium publishers outside open RTB |
-| `artf` | Agentic Real Time Framework — autonomous real-time programmatic execution by AI agents |
-| `agentic` | AI agents in media buying, autonomous campaign management, IAB Agent Registry |
-| `new_customer` | New customer acquisition, prospecting, new-to-brand targeting, incremental reach |
-| `incrementality` | Lift studies, causal attribution, verifying media spend drove sales vs organic |
-| `shopify` | Shopify platform specifics, revenue reconciliation, order data, merchant store structure |
+| Pillars | `strategy`, `kpis_metrics`, `data_tech`, `governance`, `creative`, `validation` |
+| Channels | `meta`, `google`, `pinterest`, `tiktok`, `other_channels` |
+| Context | `shopify`, `subscription`, `merchant_profile`, `category_knowledge`, `competitive_intel`, `platform_changes`, `regulation`, `ai_in_marketing` |
+
+No route filters by tag today. Changing the set means rerunning `scripts/reclassify.ts --force`.
+
+## Reclassifying stored documents
+
+`scripts/reclassify.ts` rewrites summary, key insights and tags for every document not yet on the current `PASSO_CONTEXT_VERSION`. Chunks and embeddings are untouched. It is resumable and runs four Haiku calls at a time.
+
+```
+node --env-file=.env.local --experimental-strip-types --no-warnings scripts/reclassify.ts --dry-run
+node --env-file=.env.local --experimental-strip-types --no-warnings scripts/reclassify.ts
+```
 
 ---
 
@@ -179,7 +146,7 @@ Set in `.env.local` locally, and in Vercel project settings for production. All 
 | `VOYAGE_API_KEY` | Voyage AI key for embeddings |
 | `ANTHROPIC_API_KEY` | Anthropic key — used by Haiku (ingest) and Sonnet (ask) |
 | `INBOUND_EMAIL_SECRET` | Shared secret for webhook auth — passed as `?key=` in the Postmark inbound webhook URL |
-| `NEXT_PUBLIC_INBOUND_EMAIL` | Display email shown in UI (`pantani@passo.ad`) |
+| `NEXT_PUBLIC_INBOUND_EMAIL` | Display email shown in UI (`pantani@passoagency.com`) |
 | `YOUTUBE_API_KEY` | YouTube Data API v3 key (Google Cloud Console) |
 | `YOUTUBE_CHANNEL_IDS` | Comma-separated channels for `/api/poll-youtube` |
 | `YOUTUBE_LOOKBACK_DAYS` | How far back the poll route looks for new videos (default `7`) |
@@ -207,7 +174,7 @@ Set in `.env.local` locally, and in Vercel project settings for production. All 
 
 **Ask uses hybrid search** — the Ask route (`/api/ask`) combines two retrieval passes: (1) vector similarity search for the top 15 semantically relevant chunks, and (2) keyword search on document titles and summaries for any words in the question longer than 3 characters. This ensures named entities (companies, platforms, products) are never missed due to semantic distance. Results are merged, vector hits first.
 
-**Ask uses Sonnet and supplements the knowledge base** — after retrieval, everything goes to Claude Sonnet with document-level key_insights alongside the chunk passages. Sonnet leads with knowledge base content and fills gaps with its own training knowledge, labelling the source so callers can distinguish Passo-curated knowledge from general industry knowledge.
+**Ask uses Sonnet and supplements the knowledge base** — after retrieval, everything goes to Claude Sonnet with document-level key_insights alongside the chunk passages. Sonnet leads with knowledge base content and fills gaps with its own training knowledge, labelling the source so Jordan can tell curated knowledge from general industry knowledge.
 
 **YouTube transcript via Supadata** — Vercel runs in AWS datacenters; YouTube blocks transcript requests from those IPs. Supadata proxies the request transparently. Free tier is 100 credits/month — sufficient for ongoing polls but bulk channel imports of 100+ videos need a paid plan.
 

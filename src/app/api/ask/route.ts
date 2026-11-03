@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { embedQuery } from '@/lib/embeddings'
 import { getSupabase } from '@/lib/supabase'
+import { PASSO_CONTEXT } from '@/lib/passo-context'
 
 export const runtime = 'nodejs'
 
@@ -156,12 +157,16 @@ export async function POST(request: NextRequest) {
     messages: [
       {
         role: 'user',
-        content: `You are Pantani — the knowledge layer of Passo, an autonomous programmatic media agency for Shopify DTC merchants in the UK. Passo's agents (Galibier for strategy, Gavia for attribution, Izoard for audience, Stelvio for execution) rely on your answers to make media decisions.
+        content: `You are Pantani, the knowledge bank behind Passo. Jordan, who runs Passo, is asking.
+
+<passo>
+${PASSO_CONTEXT}
+</passo>
 
 Your job is to give the most complete, useful answer possible. Use the following approach:
 
 1. PRIORITISE the knowledge base below — it contains Passo-specific research, benchmarks, and curated intelligence. Cite it directly where it is relevant.
-2. SUPPLEMENT with your own knowledge where the knowledge base is thin or silent. Programmatic advertising, DTC media buying, Shopify, attribution, CPM benchmarks, audience strategy — use everything you know.
+2. SUPPLEMENT with your own knowledge where the knowledge base is thin or silent. Paid media on every channel, Shopify, measurement and testing, creative, unit economics: use everything you know.
 3. BE CLEAR about the source: distinguish between what comes from Passo's knowledge base ("according to [source]...") and what is general knowledge ("generally speaking..." or "based on industry norms...").
 4. NEVER refuse to answer because the knowledge base alone is insufficient. Incomplete knowledge base coverage is not a reason to withhold a useful answer.
 
@@ -175,7 +180,7 @@ ${chunkContext}
 
 Question: ${question}
 
-Give a complete, direct answer. Lead with what the knowledge base says, then fill any gaps with your broader knowledge. Be specific — include figures, platform names, and concrete recommendations where relevant.`,
+Give a complete, direct answer. Lead with what the knowledge base says, then fill any gaps with your broader knowledge. Be specific: include figures, platform names and concrete recommendations where relevant. Where it helps, say which of the six pillars a point belongs to.`,
       },
     ],
   })
